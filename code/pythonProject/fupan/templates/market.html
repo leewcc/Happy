@@ -969,90 +969,131 @@
                                     fontSize: 14
                                 }
                             },
-                            grid: {
+                            grid: [{
                                 left: '10%',
                                 right: '10%',
-                                bottom: '15%',
-                                top: '15%'  // 调整上边距
-                            },
-                            xAxis: {
+                                height: '60%',  // K线图占据60%的高度
+                                top: '5%'
+                            }, {
+                                left: '10%',
+                                right: '10%',
+                                height: '20%',  // 成交额图占据20%的高度
+                                bottom: '5%'
+                            }],
+                            xAxis: [{
                                 type: 'category',
                                 data: klineData.map(item => item.trade_date),
                                 scale: true,
+                                gridIndex: 0,  // 对应第一个 grid
                                 axisLabel: {
-                                    fontSize: 12,  // 增大 x 轴标签字号
-                                    rotate: 30  // 旋转标签，防止重叠
+                                    fontSize: 12,
+                                    rotate: 30
                                 }
-                            },
+                            }, {
+                                type: 'category',
+                                gridIndex: 1,  // 对应第二个 grid
+                                data: klineData.map(item => item.trade_date),
+                                axisLabel: {show: false}  // 不显示第二个 x 轴的标签
+                            }],
                             yAxis: [{
-                                type: 'value',
                                 scale: true,
                                 splitArea: {
                                     show: true
                                 },
                                 axisLabel: {
-                                    fontSize: 12  // 增大 y 轴标签字号
-                                }
+                                    fontSize: 12
+                                },
+                                gridIndex: 0  // 对应第一个 grid
                             }, {
-                                type: 'value',
                                 scale: true,
+                                gridIndex: 1,  // 对应第二个 grid
                                 name: '成交额(亿)',
                                 axisLabel: {
-                                    formatter: '{value:.2f}'  // 格式化成交额显示，保留两位小数
+                                    formatter: function(value) {
+                                        if (value >= 100) {
+                                            return (value/100).toFixed(1) + '百';
+                                        } else if (value >= 10) {
+                                            return value.toFixed(1);
+                                        } else {
+                                            return value.toFixed(2);
+                                        }
+                                    }
+                                },
+                                splitLine: {
+                                    show: true,
+                                    lineStyle: {
+                                        opacity: 0.1
+                                    }
                                 }
                             }],
                             series: [
                                 {
                                     name: 'K线',
                                     type: 'candlestick',
-                                    data: klineData.map(item => [item.open, item.close, item.low, item.high])
+                                    data: klineData.map(item => [item.open, item.close, item.low, item.high]),
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0
                                 },
                                 {
                                     name: 'MA5',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.ma_5),
                                     smooth: true,
                                     showSymbol: false,
                                     lineStyle: {
-                                        opacity: 0.6,         // 降低不透明度
-                                        color: '#000000'      // 黑色
+                                        opacity: 0.6,
+                                        color: '#000000',      // 黑色
+                                        width: 1              // 设置线宽为1px
                                     }
                                 },
                                 {
                                     name: 'MA10',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.ma_10),
                                     smooth: true,
                                     showSymbol: false,
                                     lineStyle: {
                                         opacity: 0.6,
-                                        color: '#800080'      // 紫色
+                                        color: '#800080',      // 紫色
+                                        width: 1
                                     }
                                 },
                                 {
                                     name: 'MA20',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.ma_20),
                                     smooth: true,
                                     showSymbol: false,
                                     lineStyle: {
                                         opacity: 0.6,
-                                        color: '#FFD700'      // 黄色
+                                        color: '#FFD700',      // 黄色
+                                        width: 1
                                     }
                                 },
                                 {
                                     name: 'MA60',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.ma_60),
                                     smooth: true,
                                     showSymbol: false,
                                     lineStyle: {
                                         opacity: 0.6,
-                                        color: '#FF0000'      // 红色
+                                        color: '#FF0000',      // 红色
+                                        width: 1
                                     }
                                 },
                                 {
                                     name: 'BOLL上轨',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.boll_up),
                                     smooth: true,
@@ -1060,11 +1101,14 @@
                                     lineStyle: {
                                         opacity: 0.6,
                                         color: '#FF0000',     // 红色
+                                        width: 1,
                                         type: 'solid'
                                     }
                                 },
                                 {
                                     name: 'BOLL中轨',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.boll_mid),
                                     smooth: true,
@@ -1072,11 +1116,14 @@
                                     lineStyle: {
                                         opacity: 0.6,
                                         color: '#800080',     // 紫色
+                                        width: 1,
                                         type: 'solid'
                                     }
                                 },
                                 {
                                     name: 'BOLL下轨',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
                                     type: 'line',
                                     data: klineData.map(item => item.boll_low),
                                     smooth: true,
@@ -1084,16 +1131,21 @@
                                     lineStyle: {
                                         opacity: 0.6,
                                         color: '#00FF00',     // 绿色
+                                        width: 1,
                                         type: 'solid'
                                     }
                                 },
                                 {
                                     name: '成交额',
-                                    type: 'bar',
+                                    xAxisIndex: 1,
                                     yAxisIndex: 1,
+                                    type: 'bar',
                                     data: klineData.map(item => item.amount),
                                     itemStyle: {
-                                        color: '#8796aa'
+                                        color: function(params) {
+                                            const k = klineData[params.dataIndex];
+                                            return k.close >= k.open ? '#f56c6c' : '#67c23a';  // 收盘价>=开盘价用红色，否则用绿色
+                                        }
                                     },
                                     label: {
                                         show: false
