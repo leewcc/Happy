@@ -71,12 +71,14 @@ def stock_kline(stock_code):
             ORDER BY trade_date DESC
             LIMIT 120
         )
-        SELECT dd.trade_date, dd.open_price, dd.close_price, dd.low_price, dd.high_price, dd.turnover_amount
+        SELECT dd.trade_date, dd.open_price, dd.close_price, dd.low_price, dd.high_price, 
+               dd.turnover_amount, dd.ma_5, dd.ma_10, dd.ma_20, dd.ma_60
         FROM daily_data dd
         JOIN recent_dates rd ON dd.trade_date = rd.trade_date
         WHERE dd.stock_code = %s
         ORDER BY dd.trade_date ASC
         """
+        
         cursor.execute(kline_query, (stock_code, stock_code))
         data = cursor.fetchall()
         
@@ -93,7 +95,11 @@ def stock_kline(stock_code):
                 'close': float(row[2]),
                 'low': float(row[3]),
                 'high': float(row[4]),
-                'amount': float(row[5]) / 100000000  # 转换为亿元
+                'amount': round(float(row[5]) / 100000, 2),  # 转换为亿元并保留两位小数
+                'ma_5': float(row[6]) if row[6] else None,
+                'ma_10': float(row[7]) if row[7] else None,
+                'ma_20': float(row[8]) if row[8] else None,
+                'ma_60': float(row[9]) if row[9] else None
             })
         
         cursor.close()

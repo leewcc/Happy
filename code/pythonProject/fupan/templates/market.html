@@ -963,7 +963,7 @@
                                 }
                             },
                             legend: {
-                                data: ['K线', '成交额'],
+                                data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60', '成交额'],
                                 top: '30px',
                                 textStyle: {
                                     fontSize: 14  // 增大图例字号
@@ -997,56 +997,73 @@
                                 type: 'value',
                                 scale: true,
                                 name: '成交额(亿)',
-                                splitLine: {
-                                    show: false
-                                },
                                 axisLabel: {
-                                    fontSize: 12  // 增大 y 轴标签字号
-                                },
-                                nameTextStyle: {
-                                    fontSize: 14  // 增大坐标轴名称字号
+                                    formatter: '{value:.2f}'  // 格式化成交额显示，保留两位小数
                                 }
                             }],
-                            dataZoom: [{
-                                type: 'inside',
-                                start: 0,    // 改回从头开始显示
-                                end: 100
-                            }, {
-                                show: true,
-                                type: 'slider',
-                                bottom: '5%',
-                                start: 0,    // 改回从头开始显示
-                                end: 100,
-                                textStyle: {
-                                    fontSize: 12
-                                }
-                            }],
-                            series: [{
-                                name: 'K线',
-                                type: 'candlestick',
-                                data: klineData.map(item => [
-                                    item.open,
-                                    item.close,
-                                    item.low,
-                                    item.high
-                                ]),
-                                itemStyle: {
-                                    color: '#f56c6c',
-                                    color0: '#67c23a',
-                                    borderColor: '#f56c6c',
-                                    borderColor0: '#67c23a'
+                            series: [
+                                {
+                                    name: 'K线',
+                                    type: 'candlestick',
+                                    data: klineData.map(item => [item.open, item.close, item.low, item.high])
                                 },
-                                barWidth: '70%'  // 增加 K 线宽度
-                            }, {
-                                name: '成交额',
-                                type: 'bar',
-                                yAxisIndex: 1,
-                                data: klineData.map(item => item.amount),
-                                barWidth: '70%',  // 增加成交量柱状图宽度
-                                itemStyle: {
-                                    color: '#8796aa'  // 设置成交量柱状图颜色
+                                {
+                                    name: 'MA5',
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_5),
+                                    smooth: true,
+                                    showSymbol: false,  // 不显示数据点
+                                    lineStyle: {
+                                        opacity: 1,
+                                        color: '#000000'  // 黑色
+                                    }
+                                },
+                                {
+                                    name: 'MA10',
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_10),
+                                    smooth: true,
+                                    showSymbol: false,  // 不显示数据点
+                                    lineStyle: {
+                                        opacity: 1,
+                                        color: '#800080'  // 紫色
+                                    }
+                                },
+                                {
+                                    name: 'MA20',
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_20),
+                                    smooth: true,
+                                    showSymbol: false,  // 不显示数据点
+                                    lineStyle: {
+                                        opacity: 1,
+                                        color: '#FFD700'  // 黄色
+                                    }
+                                },
+                                {
+                                    name: 'MA60',
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_60),
+                                    smooth: true,
+                                    showSymbol: false,  // 不显示数据点
+                                    lineStyle: {
+                                        opacity: 1,
+                                        color: '#FF0000'  // 红色
+                                    }
+                                },
+                                {
+                                    name: '成交额',
+                                    type: 'bar',
+                                    yAxisIndex: 1,
+                                    data: klineData.map(item => item.amount),
+                                    itemStyle: {
+                                        color: '#8796aa'
+                                    },
+                                    label: {
+                                        show: false
+                                    }
                                 }
-                            }]
+                            ]
                         };
                         
                         klineChart.setOption(option);
