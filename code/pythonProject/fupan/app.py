@@ -72,7 +72,8 @@ def stock_kline(stock_code):
             LIMIT 120
         )
         SELECT dd.trade_date, dd.open_price, dd.close_price, dd.low_price, dd.high_price, 
-               dd.turnover_amount, dd.ma_5, dd.ma_10, dd.ma_20, dd.ma_60
+               dd.turnover_amount, dd.ma_5, dd.ma_10, dd.ma_20, dd.ma_60,
+               dd.boll_up, dd.boll_mid, dd.boll_low  -- 添加 BOLL 指标数据
         FROM daily_data dd
         JOIN recent_dates rd ON dd.trade_date = rd.trade_date
         WHERE dd.stock_code = %s
@@ -99,7 +100,10 @@ def stock_kline(stock_code):
                 'ma_5': float(row[6]) if row[6] else None,
                 'ma_10': float(row[7]) if row[7] else None,
                 'ma_20': float(row[8]) if row[8] else None,
-                'ma_60': float(row[9]) if row[9] else None
+                'ma_60': float(row[9]) if row[9] else None,
+                'boll_up': float(row[10]) if row[10] else None,
+                'boll_mid': float(row[11]) if row[11] else None,
+                'boll_low': float(row[12]) if row[12] else None
             })
         
         cursor.close()

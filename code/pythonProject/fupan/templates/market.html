@@ -963,10 +963,10 @@
                                 }
                             },
                             legend: {
-                                data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60', '成交额'],
+                                data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60', 'BOLL上轨', 'BOLL中轨', 'BOLL下轨', '成交额'],
                                 top: '30px',
                                 textStyle: {
-                                    fontSize: 14  // 增大图例字号
+                                    fontSize: 14
                                 }
                             },
                             grid: {
@@ -1012,10 +1012,10 @@
                                     type: 'line',
                                     data: klineData.map(item => item.ma_5),
                                     smooth: true,
-                                    showSymbol: false,  // 不显示数据点
+                                    showSymbol: false,
                                     lineStyle: {
-                                        opacity: 1,
-                                        color: '#000000'  // 黑色
+                                        opacity: 0.6,         // 降低不透明度
+                                        color: '#000000'      // 黑色
                                     }
                                 },
                                 {
@@ -1023,10 +1023,10 @@
                                     type: 'line',
                                     data: klineData.map(item => item.ma_10),
                                     smooth: true,
-                                    showSymbol: false,  // 不显示数据点
+                                    showSymbol: false,
                                     lineStyle: {
-                                        opacity: 1,
-                                        color: '#800080'  // 紫色
+                                        opacity: 0.6,
+                                        color: '#800080'      // 紫色
                                     }
                                 },
                                 {
@@ -1034,10 +1034,10 @@
                                     type: 'line',
                                     data: klineData.map(item => item.ma_20),
                                     smooth: true,
-                                    showSymbol: false,  // 不显示数据点
+                                    showSymbol: false,
                                     lineStyle: {
-                                        opacity: 1,
-                                        color: '#FFD700'  // 黄色
+                                        opacity: 0.6,
+                                        color: '#FFD700'      // 黄色
                                     }
                                 },
                                 {
@@ -1045,10 +1045,46 @@
                                     type: 'line',
                                     data: klineData.map(item => item.ma_60),
                                     smooth: true,
-                                    showSymbol: false,  // 不显示数据点
+                                    showSymbol: false,
                                     lineStyle: {
-                                        opacity: 1,
-                                        color: '#FF0000'  // 红色
+                                        opacity: 0.6,
+                                        color: '#FF0000'      // 红色
+                                    }
+                                },
+                                {
+                                    name: 'BOLL上轨',
+                                    type: 'line',
+                                    data: klineData.map(item => item.boll_up),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#FF0000',     // 红色
+                                        type: 'solid'
+                                    }
+                                },
+                                {
+                                    name: 'BOLL中轨',
+                                    type: 'line',
+                                    data: klineData.map(item => item.boll_mid),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#800080',     // 紫色
+                                        type: 'solid'
+                                    }
+                                },
+                                {
+                                    name: 'BOLL下轨',
+                                    type: 'line',
+                                    data: klineData.map(item => item.boll_low),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#00FF00',     // 绿色
+                                        type: 'solid'
                                     }
                                 },
                                 {
