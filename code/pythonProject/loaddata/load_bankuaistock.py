@@ -98,6 +98,6 @@ def get_and_insert_stocks(plate_type, table_name):
 
 if __name__ == "__main__":
     # 获取并插入行业板块成分股数据
-    get_and_insert_stocks('I', 'industry_stock')
+    # get_and_insert_stocks('I', 'industry_stock')
     # 获取并插入概念板块成分股数据
     get_and_insert_stocks('N', 'concept_stock')

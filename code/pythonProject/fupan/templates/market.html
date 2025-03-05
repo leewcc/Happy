@@ -336,6 +336,26 @@
         .concept-table tr:hover {
             background-color: #f5f7fa;
         }
+
+        .kline-tooltip {
+            position: absolute;
+            display: none;
+            width: 1200px;
+            height: 600px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            z-index: 9999;
+            padding: 10px;
+        }
+
+        #klineChart {
+            width: 100% !important;
+            height: 100% !important;
+            min-width: 1180px;
+            min-height: 580px;
+        }
     </style>
 </head>
 <body>
@@ -492,7 +512,10 @@
                         {% else %}
                         <td></td>
                         {% endif %}
-                        <td>{{ stock.stock_name }}</td>
+                        <td data-code="{{ stock.stock_code }}" 
+                            onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                            {{ stock.stock_name }}
+                        </td>
                         <td>{{ format_change_rate('000000', stock.close_change)|safe }}</td>
                         <td>{{ format_change_rate('000000', stock.open_change)|safe }}</td>
                         <td>{{ stock.turnover_ratio }}%</td>
@@ -527,7 +550,10 @@
                         {% else %}
                         <td></td>
                         {% endif %}
-                        <td>{{ stock.stock_name }}</td>
+                        <td data-code="{{ stock.stock_code }}" 
+                            onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                            {{ stock.stock_name }}
+                        </td>
                         <td>{{ format_change_rate('000000', stock.close_change)|safe }}</td>
                         <td>{{ format_change_rate('000000', stock.open_change)|safe }}</td>
                         <td>{{ stock.turnover_ratio }}%</td>
@@ -563,7 +589,10 @@
                         {% else %}
                         <td></td>
                         {% endif %}
-                        <td>{{ stock.name }}</td>
+                        <td data-code="{{ stock.stock_code }}" 
+                            onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                            {{ stock.name }}
+                        </td>
                         <td>{{ stock.first_time }}</td>
                         <td>{{ stock.last_time }}</td>
                         <td>{{ stock.turnover_ratio }}%</td>
@@ -596,7 +625,10 @@
                     {% for stock in data.all_limit_stocks %}
                         {% if stock.limit_type == '跌停' %}
                         <tr>
-                            <td>{{ stock.name }}</td>
+                            <td data-code="{{ stock.stock_code }}" 
+                                onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                                {{ stock.name }}
+                            </td>
                             <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                             <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                             <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
@@ -665,7 +697,10 @@
                         <tbody>
                             {% for stock in concept.limit_up_stocks %}
                             <tr>
-                                <td>{{ stock.stock_name }}</td>
+                                <td data-code="{{ stock.stock_code }}" 
+                                    onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                                    {{ stock.stock_name }}
+                                </td>
                                 <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td>{{ stock.first_time }}</td>
                                 <td>{{ stock.last_time }}</td>
@@ -700,7 +735,10 @@
                         <tbody>
                             {% for stock in concept.broken_stocks %}
                             <tr>
-                                <td>{{ stock.stock_name }}</td>
+                                <td data-code="{{ stock.stock_code }}" 
+                                    onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                                    {{ stock.stock_name }}
+                                </td>
                                 <td data-sort-value="{{ stock.pct_chg }}">{{ format_change_rate('000000', stock.pct_chg)|safe }}</td>
                                 <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                                 <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
@@ -733,7 +771,10 @@
                         <tbody>
                             {% for stock in concept.limit_down_stocks %}
                             <tr>
-                                <td>{{ stock.stock_name }}</td>
+                                <td data-code="{{ stock.stock_code }}" 
+                                    onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
+                                    {{ stock.stock_name }}
+                                </td>
                                 <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                                 <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
@@ -749,6 +790,10 @@
                 {% endif %}
             </div>
         {% endfor %}
+    </div>
+
+    <div id="klineTooltip" class="kline-tooltip">
+        <div id="klineChart"></div>
     </div>
 
     <script>
@@ -863,6 +908,198 @@
 
             $(".concept-table").tablesorter();
         });
+
+        // 初始化K线图
+        var klineChart = echarts.init(document.getElementById('klineChart'));
+        var tooltipTimer = null;
+        
+        // 处理鼠标悬浮事件
+        function handleStockHover(event, stockCode, stockName) {
+            clearTimeout(tooltipTimer);
+            
+            const tooltip = document.getElementById('klineTooltip');
+            const chart = document.getElementById('klineChart');
+            
+            // 计算悬浮框位置
+            const rect = event.target.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            
+            let left = rect.left + scrollLeft;
+            let top = rect.top + scrollTop + rect.height;
+            
+            // 确保悬浮框不会超出屏幕
+            if (left + tooltip.offsetWidth > window.innerWidth) {
+                left = window.innerWidth - tooltip.offsetWidth - 20;
+            }
+            
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.display = 'block';
+            
+            // 加载K线数据
+            fetch(`/stock_kline/${stockCode}`)
+                .then(response => response.json())
+                .then(result => {
+                    console.log('获取到K线数据:', result); // 调试日志
+                    if (result.code === 0 && result.data && result.data.length > 0) {
+                        const klineData = result.data;
+                        
+                        const option = {
+                            title: {
+                                text: `${stockName}(${stockCode}) K线图`,
+                                left: 'center',
+                                textStyle: {
+                                    fontSize: 18  // 增大标题字号
+                                }
+                            },
+                            tooltip: {
+                                trigger: 'axis',
+                                axisPointer: {
+                                    type: 'cross'
+                                },
+                                textStyle: {
+                                    fontSize: 14  // 增大提示框字号
+                                }
+                            },
+                            legend: {
+                                data: ['K线', '成交额'],
+                                top: '30px',
+                                textStyle: {
+                                    fontSize: 14  // 增大图例字号
+                                }
+                            },
+                            grid: {
+                                left: '10%',
+                                right: '10%',
+                                bottom: '15%',
+                                top: '15%'  // 调整上边距
+                            },
+                            xAxis: {
+                                type: 'category',
+                                data: klineData.map(item => item.trade_date),
+                                scale: true,
+                                axisLabel: {
+                                    fontSize: 12,  // 增大 x 轴标签字号
+                                    rotate: 30  // 旋转标签，防止重叠
+                                }
+                            },
+                            yAxis: [{
+                                type: 'value',
+                                scale: true,
+                                splitArea: {
+                                    show: true
+                                },
+                                axisLabel: {
+                                    fontSize: 12  // 增大 y 轴标签字号
+                                }
+                            }, {
+                                type: 'value',
+                                scale: true,
+                                name: '成交额(亿)',
+                                splitLine: {
+                                    show: false
+                                },
+                                axisLabel: {
+                                    fontSize: 12  // 增大 y 轴标签字号
+                                },
+                                nameTextStyle: {
+                                    fontSize: 14  // 增大坐标轴名称字号
+                                }
+                            }],
+                            dataZoom: [{
+                                type: 'inside',
+                                start: 0,    // 改回从头开始显示
+                                end: 100
+                            }, {
+                                show: true,
+                                type: 'slider',
+                                bottom: '5%',
+                                start: 0,    // 改回从头开始显示
+                                end: 100,
+                                textStyle: {
+                                    fontSize: 12
+                                }
+                            }],
+                            series: [{
+                                name: 'K线',
+                                type: 'candlestick',
+                                data: klineData.map(item => [
+                                    item.open,
+                                    item.close,
+                                    item.low,
+                                    item.high
+                                ]),
+                                itemStyle: {
+                                    color: '#f56c6c',
+                                    color0: '#67c23a',
+                                    borderColor: '#f56c6c',
+                                    borderColor0: '#67c23a'
+                                },
+                                barWidth: '70%'  // 增加 K 线宽度
+                            }, {
+                                name: '成交额',
+                                type: 'bar',
+                                yAxisIndex: 1,
+                                data: klineData.map(item => item.amount),
+                                barWidth: '70%',  // 增加成交量柱状图宽度
+                                itemStyle: {
+                                    color: '#8796aa'  // 设置成交量柱状图颜色
+                                }
+                            }]
+                        };
+                        
+                        klineChart.setOption(option);
+                        klineChart.resize();  // 添加这行确保图表正确适应容器大小
+                    } else {
+                        console.error('未获取到K线数据或数据为空:', result); // 调试日志
+                        // 显示错误信息
+                        klineChart.setOption({
+                            title: {
+                                text: `${stockName}(${stockCode}) 暂无K线数据`,
+                                left: 'center'
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('获取K线数据失败:', error); // 调试日志
+                    // 显示错误信息
+                    klineChart.setOption({
+                        title: {
+                            text: `获取数据失败: ${error.message}`,
+                            left: 'center'
+                        }
+                    });
+                });
+        }
+        
+        // 处理鼠标离开事件
+        function handleStockLeave() {
+            tooltipTimer = setTimeout(() => {
+                document.getElementById('klineTooltip').style.display = 'none';
+            }, 200);
+        }
+        
+        // 为所有股票名称添加悬浮事件
+        document.addEventListener('DOMContentLoaded', function() {
+            const stockNames = document.querySelectorAll('td:nth-child(2)'); // 假设股票名称在第二列
+            stockNames.forEach(td => {
+                if (td.textContent.trim()) {
+                    const stockCode = td.getAttribute('data-code');
+                    const stockName = td.textContent.trim();
+                    td.onmouseenter = (e) => handleStockHover(e, stockCode, stockName);
+                    td.onmouseleave = handleStockLeave;
+                }
+            });
+        });
+        
+        // 防止鼠标移入悬浮框时关闭
+        document.getElementById('klineTooltip').onmouseenter = () => {
+            clearTimeout(tooltipTimer);
+        };
+        
+        document.getElementById('klineTooltip').onmouseleave = handleStockLeave;
     </script>
 </body>
 </html> 

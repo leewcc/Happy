@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 from fupan import get_market_analysis, format_change_rate, process_concept_stocks  # 直接导入
 from datetime import datetime, timedelta
 import tushare as ts
+import mysql.connector
 
 app = Flask(__name__)
 
@@ -34,6 +35,77 @@ def index():
                          data=market_data, 
                          format_change_rate=format_change_rate,
                          dates=dates)
+
+@app.route('/stock_kline/')  # 添加一个处理空路径的路由
+def stock_kline_error():
+    return {'code': 1, 'msg': '请提供股票代码'}, 400
+
+@app.route('/stock_kline/<stock_code>')
+def stock_kline(stock_code):
+    print("123")
+    if not stock_code:  # 添加参数验证
+        print("code 为空")
+        return {'code': 1, 'msg': '股票代码不能为空'}, 400
+    
+    try:
+        # 添加数据库配置
+        config = {
+            'user': 'root',
+            'password': 'root',
+            'host': 'localhost',
+            'database': 'happy',
+            'raise_on_warnings': True
+        }
+        
+        connection = mysql.connector.connect(**config)
+        cursor = connection.cursor()
+        
+        print(f"正在查询股票代码: {stock_code} 的K线数据") # 调试日志
+        
+        # 获取最近120天的日线数据，按日期降序排序后取120条，再按日期升序输出
+        kline_query = """
+        WITH recent_dates AS (
+            SELECT trade_date
+            FROM daily_data 
+            WHERE stock_code = %s
+            ORDER BY trade_date DESC
+            LIMIT 120
+        )
+        SELECT dd.trade_date, dd.open_price, dd.close_price, dd.low_price, dd.high_price, dd.turnover_amount
+        FROM daily_data dd
+        JOIN recent_dates rd ON dd.trade_date = rd.trade_date
+        WHERE dd.stock_code = %s
+        ORDER BY dd.trade_date ASC
+        """
+        cursor.execute(kline_query, (stock_code, stock_code))
+        data = cursor.fetchall()
+        
+        print(f"查询到 {len(data)} 条数据") # 调试日志
+        if len(data) > 0:
+            print(f"第一条数据: {data[0]}") # 调试日志
+        
+        # 格式化数据
+        kline_data = []
+        for row in data:
+            kline_data.append({
+                'trade_date': row[0].strftime('%Y-%m-%d'),
+                'open': float(row[1]),
+                'close': float(row[2]),
+                'low': float(row[3]),
+                'high': float(row[4]),
+                'amount': float(row[5]) / 100000000  # 转换为亿元
+            })
+        
+        cursor.close()
+        connection.close()
+        
+        result = {'code': 0, 'data': kline_data}
+        print(f"返回数据: {result}") # 调试日志
+        return result
+        
+    except Exception as e:
+        print(f"发生错误: {str(e)}") # 调试日志
+        return {'code': 1, 'msg': str(e)}
 
 def format_change_rate(code, rate):
     """格式化涨跌幅"""

@@ -97,7 +97,9 @@
                         <tbody>
                             {% for stock in concept.limit_up_stocks %}
                             <tr>
-                                <td>{{ stock.stock_name }}</td>
+                                <td>
+                                    <span class="stock-name" data-code="{{ stock.stock_code }}">{{ stock.stock_name }}</span>
+                                </td>
                                 <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td>{{ stock.first_time }}</td>
                                 <td>{{ stock.last_time }}</td>
@@ -132,7 +134,9 @@
                         <tbody>
                             {% for stock in concept.broken_stocks %}
                             <tr>
-                                <td>{{ stock.stock_name }}</td>
+                                <td>
+                                    <span class="stock-name" data-code="{{ stock.stock_code }}">{{ stock.stock_name }}</span>
+                                </td>
                                 <td data-sort-value="{{ stock.close_change }}">{{ format_change_rate('000000', stock.close_change)|safe }}</td>
                                 <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                                 <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
@@ -165,7 +169,9 @@
                         <tbody>
                             {% for stock in concept.limit_down_stocks %}
                             <tr>
-                                <td>{{ stock.stock_name }}</td>
+                                <td>
+                                    <span class="stock-name" data-code="{{ stock.stock_code }}">{{ stock.stock_name }}</span>
+                                </td>
                                 <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                                 <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
@@ -183,6 +189,42 @@
             {% endif %}
         {% endfor %}
     </div>
+
+    <!-- 当日连板股票表格 -->
+    <table class="consecutive-table">
+        <tr>
+            <th>连板天数</th>
+            <th>股票名称</th>
+            <th>首次涨停</th>
+            <th>最后涨停</th>
+            <th>换手率</th>
+            <th>成交额(亿)</th>
+            <th>总市值(亿)</th>
+            <th>所属行业</th>
+            <th>所属概念</th>
+        </tr>
+        {% for limit_times, stocks in data.consecutive_limit_stocks|groupby('limit_times')|sort(reverse=True) %}
+            {% for stock in stocks %}
+            <tr>
+                {% if loop.first %}
+                <td>{{ limit_times }}连板</td>
+                {% else %}
+                <td></td>
+                {% endif %}
+                <td>
+                    <span class="stock-name" data-code="{{ stock.stock_code }}">{{ stock.name }}</span>
+                </td>
+                <td>{{ stock.first_time }}</td>
+                <td>{{ stock.last_time }}</td>
+                <td>{{ stock.turnover_ratio }}%</td>
+                <td>{{ stock.amount }}</td>
+                <td>{{ stock.total_mv }}</td>
+                <td>{{ stock.industry }}</td>
+                <td>{{ stock.concept }}</td>
+            </tr>
+            {% endfor %}
+        {% endfor %}
+    </table>
 
     <script>
         // 准备数据
@@ -214,6 +256,27 @@
         // 初始化图表
         var chart = echarts.init(document.getElementById('distribution'));
         chart.setOption(option);
+
+        // 为所有股票名称添加悬停事件
+        document.querySelectorAll('.stock-name').forEach(element => {
+            element.addEventListener('mouseover', function() {
+                const stockCode = this.getAttribute('data-code');
+                if (stockCode) {
+                    fetch(`/stock_kline/${stockCode}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.code === 0) {
+                                // 处理K线数据
+                                console.log('K线数据:', data.data);
+                                // 这里可以添加显示K线图的逻辑
+                            } else {
+                                console.error('获取K线数据失败:', data.msg);
+                            }
+                        })
+                        .catch(error => console.error('请求失败:', error));
+                }
+            });
+        });
     </script>
 </body>
 </html> 

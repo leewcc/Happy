@@ -402,18 +402,19 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             print(f"格式化后last_time: {format_time(stock[4])}")
             print("---")
 
-        # 修改当日连板股票数据处理（从涨跌停表获取，金额单位是元）
+        # 修改当日连板股票数据处理
         stocks_data = [
             {
                 'limit_times': stock[2],
                 'name': stock[1],
-                'first_time': format_time(stock[3]),  # 格式化时间
-                'last_time': format_time(stock[4]),   # 格式化时间
+                'stock_code': stock[0][:6],  # 添加股票代码
+                'first_time': format_time(stock[3]),
+                'last_time': format_time(stock[4]),
                 'turnover_ratio': stock[7],
-                'amount': f"{stock[8] / 100000000:.2f}" if stock[8] else "0.00",  # 从元转换为亿元
+                'amount': f"{stock[8] / 100000000:.2f}" if stock[8] else "0.00",
                 'concept': stock[5],
                 'industry': stock[6],
-                'total_mv': f"{stock[10] / 100000000:.2f}" if stock[10] else "0.00"  # 从元转换为亿元
+                'total_mv': f"{stock[10] / 100000000:.2f}" if stock[10] else "0.00"
             }
             for stock in consecutive_limit_stocks
         ]
@@ -609,6 +610,7 @@ def process_concept_stocks(stocks_data):
             
             # 准备股票数据
             stock_info = {
+                'stock_code': stock['ts_code'][:6],  # 添加股票代码
                 'stock_name': stock['name'],
                 'limit_times': stock.get('limit_times', 0),
                 'first_time': stock.get('first_time', ''),
@@ -620,7 +622,8 @@ def process_concept_stocks(stocks_data):
                 'concept': stock.get('concept', ''),
                 'core_concept': stock.get('core_concept', ''),
                 'pct_chg': stock.get('pct_chg', 0),  # 使用 pct_chg 字段
-                'limit_amount': stock.get('limit_amount', '0.00')
+                'limit_amount': stock.get('limit_amount', '0.00'),
+                'close_change': stock.get('pct_chg', 0)  # 添加收盘涨幅字段
             }
             
             # 根据股票类型归类
