@@ -1,8 +1,8 @@
-import tushare as ts
+import chinadata.ca_data as ts
 import pymysql
 
 # 设置 Tushare Pro 的 token
-ts.set_token('a880b180343bdf47d774721036dabac9f9dd7ec3952c80fbe8ba515e')
+ts.set_token('i593c24d0926bfb845f136082a335d64f71')
 pro = ts.pro_api()
 
 # 数据库连接配置

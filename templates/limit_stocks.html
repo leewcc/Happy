@@ -1,0 +1,234 @@
+<!-- 假设这是现有的模板文件的一部分，我们需要添加核心概念展示功能 -->
+
+<!-- 在页面顶部添加flash消息显示 -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!-- 添加更好的样式和布局 -->
+<style>
+  /* 整体表格样式 */
+  .stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+  }
+  
+  .stock-table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .stock-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+  }
+  
+  /* 隔行变色 */
+  .stock-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+  
+  .stock-table tbody tr:hover {
+    background-color: #e9ecef;
+  }
+  
+  /* 输入框样式 */
+  .concept-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    transition: border-color 0.15s ease-in-out;
+  }
+  
+  .concept-input:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+  
+  /* 按钮样式 */
+  .save-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.15s ease-in-out;
+  }
+  
+  .save-btn:hover {
+    background-color: #0069d9;
+  }
+  
+  /* 表格容器，添加滚动条 */
+  .table-container {
+    max-height: 70vh;
+    overflow-y: auto;
+    margin-bottom: 20px;
+  }
+  
+  /* 调整列宽 */
+  .col-name { width: 12%; }
+  .col-time { width: 8%; }
+  .col-industry { width: 10%; }
+  .col-reason { width: 15%; }
+  .col-concepts { width: 25%; }
+  .col-lbd { width: 5%; }
+  .col-core { width: 8%; }
+  
+  /* 调试信息样式 */
+  .debug-section {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+  }
+  
+  .debug-value {
+    font-size: 12px;
+    color: #6c757d;
+  }
+  
+  /* 页面标题 */
+  .page-title {
+    margin-bottom: 20px;
+    color: #343a40;
+  }
+  
+  /* 日期选择器 */
+  .date-selector {
+    margin-bottom: 20px;
+  }
+</style>
+
+<!-- 添加日期选择器 -->
+<div class="date-selector">
+  <form method="get" action="{{ url_for('limit_stocks_page') }}" class="form-inline">
+    <label for="date-picker" class="mr-2">选择日期:</label>
+    <input type="date" id="date-picker" name="date" value="{{ today }}" class="form-control mr-2">
+    <button type="submit" class="btn btn-secondary">查看</button>
+  </form>
+</div>
+
+<!-- 使用表单包装整个表格，以支持提交 -->
+<form method="post" action="{{ url_for('limit_stocks_page', date=today.replace('-', '')) }}">
+  
+  <!-- 可以折叠的调试信息 -->
+  <details class="debug-section">
+    <summary>调试信息 (点击展开)</summary>
+    <p>日期: {{ today }}</p>
+    <p>股票数量: {{ stocks|length }}</p>
+    <p>数据示例:</p>
+    <ul>
+    {% for stock in stocks[:2] %}
+      <li>
+        {{ stock.name }} ({{ stock.ts_code }}): 
+        核心概念1={{ stock.core_concept1|default('空', true) }}, 
+        核心概念2={{ stock.core_concept2|default('空', true) }}, 
+        核心概念3={{ stock.core_concept3|default('空', true) }}
+      </li>
+    {% endfor %}
+    </ul>
+  </details>
+
+  <!-- 表格容器，添加滚动条 -->
+  <div class="table-container">
+    <table class="stock-table">
+      <thead>
+        <tr>
+          <th class="col-name">股票名称</th>
+          <th class="col-time">首次涨停时间</th>
+          <th class="col-industry">行业</th>
+          <th class="col-reason">涨停原因</th>
+          <th class="col-concepts">概念</th>
+          <th class="col-lbd">连板</th>
+          <th class="col-core">核心概念1</th>
+          <th class="col-core">核心概念2</th>
+          <th class="col-core">核心概念3</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for stock in stocks %}
+        <tr>
+          <td>
+            <strong>{{ stock.name }}</strong>
+            <div class="text-muted small">{{ stock.ts_code }}</div>
+            <input type="hidden" name="name_{{ stock.ts_code }}" value="{{ stock.name }}">
+            <input type="hidden" name="core_concept_{{ stock.ts_code }}" value="1">
+          </td>
+          <td>{{ stock.first_time }}</td>
+          <td>{{ stock.industry }}</td>
+          <td>{{ stock.reason }}</td>
+          <td>
+            <div style="max-height: 80px; overflow-y: auto;">
+              {{ stock.concepts }}
+            </div>
+          </td>
+          <td class="text-center">{{ stock.lbd_num }}</td>
+          <td>
+            <input type="text" class="form-control" name="core_concept1_{{ stock.ts_code }}" 
+                   value="{{ stock.core_concept1|default('', true) }}" placeholder="核心概念1">
+            <span class="debug-value">(值: {{ stock.core_concept1|default('空', true) }})</span>
+          </td>
+          <td>
+            <input type="text" class="form-control" name="core_concept2_{{ stock.ts_code }}" 
+                   value="{{ stock.core_concept2|default('', true) }}" placeholder="核心概念2">
+            <span class="debug-value">(值: {{ stock.core_concept2|default('空', true) }})</span>
+          </td>
+          <td>
+            <input type="text" class="form-control" name="core_concept3_{{ stock.ts_code }}" 
+                   value="{{ stock.core_concept3|default('', true) }}" placeholder="核心概念3">
+            <span class="debug-value">(值: {{ stock.core_concept3|default('空', true) }})</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="text-center mt-4 mb-5">
+    <button type="submit" class="save-btn">保存核心概念</button>
+  </div>
+</form>
+
+<!-- 添加一些JavaScript增强功能 -->
+<script>
+  // 当页面加载完成后执行
+  document.addEventListener('DOMContentLoaded', function() {
+    // 格式化日期选择器的值
+    const datePicker = document.getElementById('date-picker');
+    if (datePicker) {
+      // 将 "2025-03-03" 格式转换为 HTML date input 需要的格式
+      const today = "{{ today }}";
+      datePicker.value = today;
+    }
+    
+    // 添加表格行高亮效果
+    const rows = document.querySelectorAll('.stock-table tbody tr');
+    rows.forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = '#e9ecef';
+      });
+      row.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = '';
+      });
+    });
+  });
+</script> 

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>市场复盘数据</title>
+    <!-- 添加 ECharts 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/js/jquery.tablesorter.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/css/theme.default.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .section {
+            background: white;
+            padding: 0 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            margin: 20px 0;
+            padding: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .section h3 {
+            margin: 30px 0 10px;
+            padding: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .highlight {
+            color: #d63384;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .market-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .market-card h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .positive {
+            color: #f56c6c;
+        }
+        .negative {
+            color: #67c23a;
+        }
+        .chart-container {
+            height: 200px;
+            width: 100%;
+        }
+        /* 通用表格样式 */
+        .consecutive-table, .important-table, .compact-table {
+            width: 100%;
+            margin: 0;
+            border: 1px solid #ebeef5;
+            border-radius: 4px;
+            border-spacing: 0;
+            font-size: 16px;  /* 增大字体 */
+        }
+        
+        .consecutive-table th,
+        .consecutive-table td,
+        .important-table th,
+        .important-table td,
+        .compact-table th,
+        .compact-table td {
+            padding: 12px 20px;
+            text-align: left;
+            border-bottom: 1px solid #ebeef5;
+            white-space: nowrap;  /* 除概念外的列不换行 */
+        }
+        
+        .consecutive-table th,
+        .important-table th,
+        .compact-table th {
+            background-color: #f5f7fa;
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;  /* 增大表头字体 */
+        }
+        
+        .consecutive-table tr:hover,
+        .important-table tr:hover,
+        .compact-table tr:hover {
+            background-color: #f5f7fa;
+        }
+
+        /* 只允许概念列换行 */
+        .consecutive-table td:last-child,
+        .important-table td:last-child,
+        .compact-table td:last-child {
+            white-space: normal;  /* 概念列允许换行 */
+            min-width: 200px;     /* 设置最小宽度 */
+        }
+
+        /* 时间列样式 */
+        .consecutive-table td:nth-child(3),  /* 首次涨停时间 */
+        .consecutive-table td:nth-child(4),  /* 最后涨停时间 */
+        .compact-table td:nth-child(3),      /* 首次时间 */
+        .compact-table td:nth-child(4) {     /* 最后时间 */
+            text-align: center;
+        }
+
+        /* 连板天数列样式 */
+        .consecutive-table td:first-child {
+            font-weight: bold;
+            color: #409EFF;
+        }
+
+        /* 表格容器 */
+        .table-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0 0 20px;
+            padding: 0;
+        }
+
+        /* 特殊文本样式 */
+        .text-red {
+            color: #f56c6c;
+            font-weight: bold;
+        }
+        
+        .text-green {
+            color: #67c23a;
+            font-weight: bold;
+        }
+        
+        .text-warning {
+            color: #e6a23c;
+            font-weight: bold;
+        }
+
+        .text-highlight {
+            color: #409EFF;
+            font-weight: bold;
+        }
+
+        /* 涨停和跌停文字样式 */
+        .limit-up {
+            color: #f56c6c;
+            font-weight: bold;
+        }
+        
+        .limit-down {
+            color: #67c23a;
+            font-weight: bold;
+        }
+
+        /* 核按钮样式 */
+        .nuclear {
+            color: #e6a23c;
+            font-weight: bold;
+        }
+
+        /* 炸板样式 */
+        .broken {
+            color: #909399;
+            font-weight: bold;
+        }
+
+        /* 涨停股票表格 */
+        #limit-up-table, #broken-table, #limit-down-table {
+            width: 100%;
+            margin: 0;
+            border: 1px solid #ebeef5;
+            border-radius: 4px;
+            border-spacing: 0;
+            font-size: 16px;
+        }
+        
+        #limit-up-table th, #limit-up-table td,
+        #broken-table th, #broken-table td,
+        #limit-down-table th, #limit-down-table td {
+            padding: 12px 20px;
+            text-align: left;
+            border-bottom: 1px solid #ebeef5;
+            white-space: nowrap;
+        }
+        
+        #limit-up-table th, #broken-table th, #limit-down-table th {
+            background-color: #f5f7fa;
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        #limit-up-table tr:hover, #broken-table tr:hover, #limit-down-table tr:hover {
+            background-color: #f5f7fa;
+        }
+
+        /* 只允许概念列换行 */
+        #limit-up-table td:last-child,
+        #broken-table td:last-child,
+        #limit-down-table td:last-child {
+            white-space: normal;  /* 概念列允许换行 */
+            min-width: 200px;     /* 设置最小宽度 */
+        }
+
+        /* 时间选择器样式 */
+        .date-selector {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .date-inputs {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .date-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .date-input-group label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .date-input-group input[type="date"] {
+            padding: 6px 10px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .date-submit {
+            padding: 7px 15px;
+            background-color: #409EFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .date-submit:hover {
+            background-color: #66b1ff;
+        }
+
+        /* 概念板块样式 */
+        .concept-section {
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .concept-section h3 {
+            margin: 0 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .concept-section h4 {
+            margin: 20px 0 10px;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .concept-stats {
+            font-size: 14px;
+            margin-left: 10px;
+            color: #666;
+        }
+
+        .concept-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .concept-table th,
+        .concept-table td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        .concept-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .concept-table tr:hover {
+            background-color: #f5f7fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="section">
+        <!-- 时间选择区域 -->
+        <div class="date-selector">
+            <form id="dateForm" method="get" action="/">
+                <div class="date-inputs">
+                    <div class="date-input-group">
+                        <label for="today">今日:</label>
+                        <input type="date" id="today" name="today" value="{{ dates.today }}" required>
+                    </div>
+                    <div class="date-input-group">
+                        <label for="yesterday">昨日:</label>
+                        <input type="date" id="yesterday" name="yesterday" value="{{ dates.yesterday }}" required>
+                    </div>
+                    <div class="date-input-group">
+                        <label for="pre_day">前日:</label>
+                        <input type="date" id="pre_day" name="pre_day" value="{{ dates.pre_day }}" required>
+                    </div>
+                    <button type="submit" class="date-submit">查询</button>
+                </div>
+            </form>
+        </div>
+
+        <h2>大盘情况</h2>
+        <div class="market-grid">
+            <!-- 指数情况 -->
+            <div class="market-card">
+                <h3>指数行情</h3>
+                {% for index in data.index_changes %}
+                <p>
+                    {{ index.name }}: 
+                    <span class="{{ 'positive' if index.is_positive else 'negative' }}">
+                        {{ index.change }}
+                    </span>
+                </p>
+                {% endfor %}
+            </div>
+
+            <!-- 涨跌家数 -->
+            <div class="market-card">
+                <h3>涨跌统计</h3>
+                <p>上涨家数: <span class="positive">{{ data.market_overview.up_count }}</span></p>
+                <p>下跌家数: <span class="negative">{{ data.market_overview.down_count }}</span></p>
+                <p>涨跌比: 
+                    <span class="{{ 'positive' if data.market_overview.up_count > data.market_overview.down_count else 'negative' }}">
+                        {{ "%.2f"|format(data.market_overview.up_count / data.market_overview.down_count) if data.market_overview.down_count else '∞' }}
+                    </span>
+                </p>
+            </div>
+
+            <!-- 涨跌幅分布 -->
+            <div class="market-card">
+                <h3>涨跌幅分布</h3>
+                <div id="distribution" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>涨停情况</h2>
+        
+        <!-- 涨跌停基础数据 -->
+        <h3>涨跌停基础数据</h3>
+        <div class="table-scroll-container">
+            <table class="important-table">
+                <tr>
+                    <th>项目</th>
+                    <th>今日</th>
+                    <th>昨日</th>
+                </tr>
+                <tr>
+                    <td>涨停家数</td>
+                    <td class="positive">{{ data.limit_up_stats.today_limit_count }}</td>
+                    <td>{{ data.limit_up_stats.yesterday_limit_count }}</td>
+                </tr>
+                <tr>
+                    <td>创科板涨停</td>
+                    <td class="positive">{{ data.limit_up_stats.today_gem_star_limit_up_count }}</td>
+                    <td>{{ data.limit_up_stats.yesterday_gem_star_limit_up_count }}</td>
+                </tr>
+                <tr>
+                    <td>跌停家数</td>
+                    <td class="negative">{{ data.limit_up_stats.today_limit_down_count }}</td>
+                    <td>{{ data.limit_up_stats.yesterday_limit_down_count }}</td>
+                </tr>
+                <tr>
+                    <td>炸板率</td>
+                    <td class="{{ 'negative' if data.limit_up_stats.today_board_broken_rate > 0.5 else 'positive' }}">
+                        {{ "%.2f%%" % (data.limit_up_stats.today_board_broken_rate * 100) }}
+                    </td>
+                    <td>{{ "%.2f%%" % (data.limit_up_stats.yesterday_board_broken_rate * 100) }}</td>
+                </tr>
+                <tr>
+                    <td>连板家数</td>
+                    <td class="positive">{{ data.limit_up_stats.today_consecutive_limit_count }}</td>
+                    <td>{{ data.limit_up_stats.yesterday_consecutive_limit_count }}</td>
+                </tr>
+                <tr>
+                    <td>首次涨停</td>
+                    <td class="positive">{{ data.limit_up_stats.today_first_limit_count }}</td>
+                    <td>{{ data.limit_up_stats.yesterday_first_limit_count }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 昨日行情追踪 -->
+        <h3>昨日行情追踪</h3>
+        <div class="table-scroll-container">
+            <table class="important-table">
+                <tr>
+                    <th>项目</th>
+                    <th>中位数涨幅</th>
+                    <th>平均涨幅</th>
+                </tr>
+                <tr>
+                    <td>昨日涨停股</td>
+                    <td>{{ data.yesterday_stats.limit_up_median_gain|safe }}</td>
+                    <td>{{ data.yesterday_stats.limit_up_avg_gain|safe }}</td>
+                </tr>
+                <tr>
+                    <td>昨日首次涨停</td>
+                    <td>{{ data.yesterday_stats.first_limit_median_gain|safe }}</td>
+                    <td>{{ data.yesterday_stats.first_limit_avg_gain|safe }}</td>
+                </tr>
+                <tr>
+                    <td>昨日炸板</td>
+                    <td>{{ data.yesterday_stats.board_broken_median_gain|safe }}</td>
+                    <td>{{ data.yesterday_stats.board_broken_avg_gain|safe }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 前日连板今日行情 -->
+        <h3>前日连板今日行情</h3>
+        <div class="table-scroll-container">
+            <table class="consecutive-table">
+                <tr>
+                    <th>连板天数</th>
+                    <th>股票名称</th>
+                    <th>收盘涨幅</th>
+                    <th>开盘涨幅</th>
+                    <th>换手率</th>
+                    <th>成交额(亿)</th>
+                    <th>所属行业</th>
+                    <th>所属概念</th>
+                </tr>
+                {% for limit_times, stocks in data.pre_consecutive_stocks|groupby('limit_times')|sort(reverse=True) %}
+                    {% for stock in stocks %}
+                    <tr>
+                        {% if loop.first %}
+                        <td>{{ limit_times }}连板</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
+                        <td>{{ stock.stock_name }}</td>
+                        <td>{{ format_change_rate('000000', stock.close_change)|safe }}</td>
+                        <td>{{ format_change_rate('000000', stock.open_change)|safe }}</td>
+                        <td>{{ stock.turnover_ratio }}%</td>
+                        <td>{{ "%.2f" % stock.amount }}</td>
+                        <td>{{ stock.industry }}</td>
+                        <td>{{ stock.concept }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- 昨日连板今日行情 -->
+        <h3>昨日连板今日行情</h3>
+        <div class="table-scroll-container">
+            <table class="consecutive-table">
+                <tr>
+                    <th>连板天数</th>
+                    <th>股票名称</th>
+                    <th>收盘涨幅</th>
+                    <th>开盘涨幅</th>
+                    <th>换手率</th>
+                    <th>成交额(亿)</th>
+                    <th>所属行业</th>
+                    <th>所属概念</th>
+                </tr>
+                {% for limit_times, stocks in data.yesterday_consecutive_stocks|groupby('limit_times')|sort(reverse=True) %}
+                    {% for stock in stocks %}
+                    <tr>
+                        {% if loop.first %}
+                        <td>{{ limit_times }}连板</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
+                        <td>{{ stock.stock_name }}</td>
+                        <td>{{ format_change_rate('000000', stock.close_change)|safe }}</td>
+                        <td>{{ format_change_rate('000000', stock.open_change)|safe }}</td>
+                        <td>{{ stock.turnover_ratio }}%</td>
+                        <td>{{ "%.2f" % stock.amount }}</td>
+                        <td>{{ stock.industry }}</td>
+                        <td>{{ stock.concept }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- 当日连板股票 -->
+        <h3>当日连板股票</h3>
+        <div class="table-scroll-container">
+            <table class="consecutive-table">
+                <tr>
+                    <th>连板天数</th>
+                    <th>股票名称</th>
+                    <th>首次涨停</th>
+                    <th>最后涨停</th>
+                    <th>换手率</th>
+                    <th>成交额(亿)</th>
+                    <th>总市值(亿)</th>
+                    <th>所属行业</th>
+                    <th>所属概念</th>
+                </tr>
+                {% for limit_times, stocks in data.consecutive_limit_stocks|groupby('limit_times')|sort(reverse=True) %}
+                    {% for stock in stocks %}
+                    <tr>
+                        {% if loop.first %}
+                        <td>{{ limit_times }}连板</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
+                        <td>{{ stock.name }}</td>
+                        <td>{{ stock.first_time }}</td>
+                        <td>{{ stock.last_time }}</td>
+                        <td>{{ stock.turnover_ratio }}%</td>
+                        <td>{{ stock.amount }}</td>
+                        <td>{{ stock.total_mv }}</td>
+                        <td>{{ stock.industry }}</td>
+                        <td>{{ stock.concept }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>跌停股票</h3>
+        <div class="table-scroll-container">
+            <table id="limit-down-table" class="tablesorter compact-table">
+                <thead>
+                    <tr>
+                        <th>股票名称</th>
+                        <th>连板天数</th>
+                        <th>换手率(%)</th>
+                        <th>成交额(亿)</th>
+                        <th>总市值(亿)</th>
+                        <th>板上金额(亿)</th>
+                        <th>所属行业</th>
+                        <th>所属概念</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in data.all_limit_stocks %}
+                        {% if stock.limit_type == '跌停' %}
+                        <tr>
+                            <td>{{ stock.name }}</td>
+                            <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
+                            <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
+                            <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
+                            <td data-sort-value="{{ stock.total_mv }}">{{ stock.total_mv }}</td>
+                            <td data-sort-value="{{ stock.limit_amount }}">{{ stock.limit_amount }}</td>
+                            <td>{{ stock.industry }}</td>
+                            <td>{{ stock.concept }}</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 概念板块统计 -->
+        <h3>概念板块统计</h3>
+        <table>
+            <tr>
+                <th>概念名称</th>
+                <th>涨停数</th>
+                <th>跌停数</th>
+                <th>炸板数</th>
+            </tr>
+            {% for concept in data.concept_stats %}
+            <tr>
+                <td>{{ concept.name }}</td>
+                <td>{{ concept.up_count }}</td>
+                <td>{{ concept.down_count }}</td>
+                <td>{{ concept.broken_count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- 概念板块详情 -->
+    <div class="section">
+        <h2>概念板块详情</h2>
+        {% for concept in data.concept_stats %}
+            <div class="concept-section">
+                <h3>{{ concept.name }} 
+                    <span class="concept-stats">
+                        (涨停: <span class="text-red">{{ concept.up_count }}</span> 
+                        炸板: <span class="text-warning">{{ concept.broken_count }}</span> 
+                        跌停: <span class="text-green">{{ concept.down_count }}</span>)
+                    </span>
+                </h3>
+                
+                {% if concept.limit_up_stocks %}
+                <div class="table-scroll-container">
+                    <h4>涨停股票</h4>
+                    <table class="concept-table tablesorter">
+                        <thead>
+                            <tr>
+                                <th>股票名称</th>
+                                <th>连板天数</th>
+                                <th>首次涨停时间</th>
+                                <th>最后涨停时间</th>
+                                <th>涨停类型</th>
+                                <th>换手率(%)</th>
+                                <th>成交额(亿)</th>
+                                <th>总市值(亿)</th>
+                                <th>所属行业</th>
+                                <th>所属概念</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in concept.limit_up_stocks %}
+                            <tr>
+                                <td>{{ stock.stock_name }}</td>
+                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
+                                <td>{{ stock.first_time }}</td>
+                                <td>{{ stock.last_time }}</td>
+                                <td><span class="limit-up">涨停</span></td>
+                                <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
+                                <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
+                                <td data-sort-value="{{ stock.total_mv }}">{{ stock.total_mv }}</td>
+                                <td>{{ stock.industry }}</td>
+                                <td>{{ stock.concept }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                
+                {% if concept.broken_stocks %}
+                <div class="table-scroll-container">
+                    <h4>炸板股票</h4>
+                    <table class="concept-table tablesorter">
+                        <thead>
+                            <tr>
+                                <th>股票名称</th>
+                                <th>收盘涨幅</th>
+                                <th>换手率(%)</th>
+                                <th>成交额(亿)</th>
+                                <th>总市值(亿)</th>
+                                <th>所属行业</th>
+                                <th>所属概念</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in concept.broken_stocks %}
+                            <tr>
+                                <td>{{ stock.stock_name }}</td>
+                                <td data-sort-value="{{ stock.pct_chg }}">{{ format_change_rate('000000', stock.pct_chg)|safe }}</td>
+                                <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
+                                <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
+                                <td data-sort-value="{{ stock.total_mv }}">{{ stock.total_mv }}</td>
+                                <td>{{ stock.industry }}</td>
+                                <td>{{ stock.concept }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                
+                {% if concept.limit_down_stocks %}
+                <div class="table-scroll-container">
+                    <h4>跌停股票</h4>
+                    <table class="concept-table tablesorter">
+                        <thead>
+                            <tr>
+                                <th>股票名称</th>
+                                <th>连板天数</th>
+                                <th>换手率(%)</th>
+                                <th>成交额(亿)</th>
+                                <th>总市值(亿)</th>
+                                <th>板上金额(亿)</th>
+                                <th>所属行业</th>
+                                <th>所属概念</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock in concept.limit_down_stocks %}
+                            <tr>
+                                <td>{{ stock.stock_name }}</td>
+                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
+                                <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
+                                <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
+                                <td data-sort-value="{{ stock.total_mv }}">{{ stock.total_mv }}</td>
+                                <td data-sort-value="{{ stock.limit_amount }}">{{ stock.limit_amount }}</td>
+                                <td>{{ stock.industry }}</td>
+                                <td>{{ stock.concept }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        // 初始化涨跌幅分布图表
+        var ranges = {{ data.range_distribution.ranges|tojson|safe }};
+        var counts = {{ data.range_distribution.counts|tojson|safe }};
+
+        var option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                },
+                formatter: '{b}: {c}只'
+            },
+            grid: {
+                top: '15%',
+                left: '3%',
+                right: '4%',
+                bottom: '12%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: ranges,
+                axisLabel: {
+                    interval: 0,
+                    rotate: 0,
+                    fontSize: 11,
+                    margin: 8
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '股票数量',
+                nameTextStyle: {
+                    padding: [0, 0, 0, 30]
+                },
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                }
+            },
+            series: [{
+                name: '股票数量',
+                type: 'bar',
+                barWidth: '50%',
+                data: counts,
+                itemStyle: {
+                    color: function(params) {
+                        if (params.dataIndex < 3) {  // 下跌区间
+                            return {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [{
+                                    offset: 0, color: '#95eb7d'
+                                }, {
+                                    offset: 1, color: '#67c23a'
+                                }]
+                            };
+                        } else {  // 上涨区间
+                            return {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [{
+                                    offset: 0, color: '#ff9a9a'
+                                }, {
+                                    offset: 1, color: '#f56c6c'
+                                }]
+                            };
+                        }
+                    },
+                    borderRadius: [3, 3, 0, 0]  // 柱状图顶部圆角
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    fontSize: 12,
+                    color: '#666'
+                },
+                emphasis: {
+                    itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }]
+        };
+        
+        var chart = echarts.init(document.getElementById('distribution'));
+        chart.setOption(option);
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', function() {
+            chart.resize();
+        });
+
+        $(document).ready(function() {
+            $("#limit-down-table").tablesorter({
+                theme: 'default',
+                sortList: [[1,1]],  // 按照第2列（连板天数，索引为1）降序排序
+                headers: {
+                    1: { sorter: 'digit' },  // 连板天数
+                    2: { sorter: 'digit' },  // 换手率
+                    3: { sorter: 'digit' },  // 成交额
+                    4: { sorter: 'digit' },  // 总市值
+                    5: { sorter: 'digit' }   // 板上金额
+                }
+            });
+
+            $(".concept-table").tablesorter();
+        });
+    </script>
+</body>
+</html> 

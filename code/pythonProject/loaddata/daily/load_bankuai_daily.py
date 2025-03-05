@@ -1,4 +1,4 @@
-import tushare as ts
+import chinadata.ca_data as ts
 import pymysql
 import pandas as pd
 from ta.trend import SMAIndicator, MACD
@@ -7,7 +7,7 @@ from ta.momentum import StochasticOscillator
 from datetime import datetime, timedelta
 
 # 设置 Tushare Pro 的 token
-ts.set_token('a880b180343bdf47d774721036dabac9f9dd7ec3952c80fbe8ba515e')
+ts.set_token('i593c24d0926bfb845f136082a335d64f71')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -127,7 +127,7 @@ industry_index_rows = cursor.fetchall()
 industry_index_df = pd.DataFrame(industry_index_rows, columns=['ts_code', 'name'])
 
 # 指定日期
-target_date = '20250214'  # 你可以修改这个日期
+target_date = '20250304'  # 你可以修改这个日期
 # 计算近 120 天的开始日期
 target_datetime = datetime.strptime(target_date, '%Y%m%d')
 start_date = (target_datetime - timedelta(days=120)).strftime('%Y%m%d')

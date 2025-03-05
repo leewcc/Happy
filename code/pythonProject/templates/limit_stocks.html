@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>涨跌停分析</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;  /* 固定表格布局 */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            overflow: hidden;
+            white-space: nowrap;  /* 默认不换行 */
+            text-overflow: ellipsis;  /* 超出显示省略号 */
+        }
+        th {
+            position: relative;  /* 为resizer定位 */
+            background-color: #f2f2f2;
+            cursor: pointer;
+        }
+        .concept-input {
+            width: 90%;
+            margin: 2px 0;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+        .concept-cell {
+            padding: 4px;
+        }
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        /* 设置各列的宽度 */
+        table th:nth-child(1) { width: 10%; }  /* 股票名称 */
+        table th:nth-child(2) { width: 8%; }   /* 涨停时间 */
+        table th:nth-child(3) { width: 7%; }   /* 连板天数 */
+        table th:nth-child(4) { width: 12%; }  /* 所属行业 */
+        table th:nth-child(5) { width: 25%; }  /* 涨停原因 */
+        table th:nth-child(6) { width: 25%; }  /* 相关概念 */
+        table th:nth-child(7) { width: 13%; }  /* 核心概念 */
+        /* 涨停原因和相关概念允许换行 */
+        td:nth-child(5),
+        td:nth-child(6) {
+            white-space: normal;
+            line-height: 1.4;
+            max-height: 60px;     /* 限制最大高度 */
+            overflow-y: auto;     /* 内容过多时显示滚动条 */
+        }
+        /* 相关概念超出显示省略号 */
+        td:nth-child(6) {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;  /* 最多显示3行 */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* 修改核心概念列的样式 */
+        td:nth-child(7) {
+            white-space: normal;  /* 允许换行 */
+            text-overflow: initial;  /* 移除省略号 */
+            overflow: visible;  /* 允许内容溢出 */
+            padding: 4px;
+            height: auto;  /* 允许单元格高度自适应 */
+        }
+        /* 列分隔线样式 */
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            cursor: col-resize;
+            user-select: none;
+            height: 100%;
+            background-color: transparent;
+        }
+        
+        .resizer:hover {
+            background-color: #ddd;
+        }
+
+        /* 核心概念列样式 */
+        .concept-cell {
+            white-space: normal !important;
+            overflow: visible !important;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* 输入框样式 */
+        .concept-input {
+            width: 90%;
+            padding: 4px;
+            margin: 2px 0;
+            box-sizing: border-box;
+            height: 28px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 在表格前添加日期选择器 -->
+    <div style="margin: 20px 0;">
+        <form id="dateForm" style="display: flex; gap: 10px; align-items: center;">
+            <input type="date" id="tradeDate" name="tradeDate" 
+                   value="{{ today }}" 
+                   style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button type="submit" class="submit-btn" style="margin: 0;">查询</button>
+        </form>
+    </div>
+
+    <form id="conceptForm" method="POST">
+        <table id="stockTable">
+            <thead>
+                <tr>
+                    <th>股票名称<div class="resizer"></div></th>
+                    <th onclick="sortTable(1)">涨停时间 ▼<div class="resizer"></div></th>
+                    <th>连板天数<div class="resizer"></div></th>
+                    <th>所属行业<div class="resizer"></div></th>
+                    <th>涨停原因<div class="resizer"></div></th>
+                    <th>相关概念<div class="resizer"></div></th>
+                    <th>核心概念<div class="resizer"></div></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in stocks %}
+                <tr>
+                    <td>{{ stock.name }}</td>
+                    <td>{{ stock.first_time }}</td>
+                    <td>{{ stock.lbd_num }}</td>
+                    <td>{{ stock.industry }}</td>
+                    <td>{{ stock.reason }}</td>
+                    <td>{{ stock.concepts }}</td>
+                    <td class="concept-cell">
+                        <div class="input-container">
+                            <input type="text" class="concept-input" name="concept1_{{ loop.index }}" placeholder="核心概念1">
+                            <input type="text" class="concept-input" name="concept2_{{ loop.index }}" placeholder="核心概念2">
+                            <input type="text" class="concept-input" name="concept3_{{ loop.index }}" placeholder="核心概念3">
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="submit-btn">保存核心概念</button>
+    </form>
+
+    <script>
+        // 日期选择处理
+        document.getElementById('dateForm').onsubmit = function(e) {
+            e.preventDefault();
+            const date = document.getElementById('tradeDate').value;
+            // 转换日期格式从 YYYY-MM-DD 到 YYYYMMDD
+            const formattedDate = date.replace(/-/g, '');
+            window.location.href = `/limit_stocks?date=${formattedDate}`;
+        };
+        
+        // 页面加载时设置日期选择器的值
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = '{{ today }}';  // 从后端传来的日期
+            document.getElementById('tradeDate').value = today;
+        });
+
+        // 添加表格列宽拖动功能
+        function createResizableTable(table) {
+            const cols = table.getElementsByTagName('th');
+            
+            Array.from(cols).forEach((col) => {
+                // 创建拖动手柄
+                const resizer = col.querySelector('.resizer');
+                let x = 0;
+                let w = 0;
+
+                function mouseDownHandler(e) {
+                    x = e.clientX;
+                    
+                    const styles = window.getComputedStyle(col);
+                    w = parseInt(styles.width, 10);
+
+                    document.addEventListener('mousemove', mouseMoveHandler);
+                    document.addEventListener('mouseup', mouseUpHandler);
+                    
+                    // 添加resize时的样式
+                    resizer.classList.add('resizing');
+                }
+
+                function mouseMoveHandler(e) {
+                    const dx = e.clientX - x;
+                    col.style.width = `${w + dx}px`;
+                }
+
+                function mouseUpHandler() {
+                    document.removeEventListener('mousemove', mouseMoveHandler);
+                    document.removeEventListener('mouseup', mouseUpHandler);
+                    
+                    // 移除resize时的样式
+                    resizer.classList.remove('resizing');
+                }
+
+                resizer.addEventListener('mousedown', mouseDownHandler);
+            });
+        }
+
+        // 页面加载完成后初始化可拖动表格
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，事件已绑定');  // 调试日志
+            const table = document.getElementById('stockTable');
+            createResizableTable(table);
+            sortTable(1);  // 保持原有的排序功能
+        });
+
+        // 表格排序函数
+        function sortTable(n) {
+            var table = document.getElementById("stockTable");
+            var switching = true;
+            var dir = "asc";
+            var switchcount = 0;
+            
+            while (switching) {
+                switching = false;
+                var rows = table.rows;
+                
+                for (var i = 1; i < (rows.length - 1); i++) {
+                    var shouldSwitch = false;
+                    var x = rows[i].getElementsByTagName("TD")[n];
+                    var y = rows[i + 1].getElementsByTagName("TD")[n];
+                    
+                    if (dir == "asc") {
+                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else if (dir == "desc") {
+                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount == 0 && dir == "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+        }
+
+        // 表单提交处理
+        document.getElementById('conceptForm').onsubmit = function(e) {
+            e.preventDefault();
+            console.log('表单提交开始');  // 调试日志
+            
+            const formData = new FormData(this);
+            const data = [];
+            const stockCount = {{ stocks|length }};
+            console.log('股票总数:', stockCount);  // 调试日志
+            
+            for (let i = 1; i <= stockCount; i++) {
+                // 获取三个核心概念并过滤空值
+                const concepts = [
+                    formData.get(`concept1_${i}`),
+                    formData.get(`concept2_${i}`),
+                    formData.get(`concept3_${i}`)
+                ];
+                console.log(`第${i}行原始概念:`, concepts);  // 调试日志
+                
+                const filteredConcepts = concepts.filter(c => c && c.trim());
+                console.log(`第${i}行过滤后概念:`, filteredConcepts);  // 调试日志
+                
+                if (filteredConcepts.length > 0) {
+                    const stockName = document.querySelector(`tr:nth-child(${i}) td:first-child`).textContent;
+                    const mergedConcepts = filteredConcepts.join(',');
+                    console.log(`股票: ${stockName}, 核心概念: ${mergedConcepts}`);
+                    
+                    data.push({
+                        name: stockName,
+                        core_concepts: mergedConcepts
+                    });
+                }
+            }
+            
+            console.log('准备发送的数据:', data);  // 调试日志
+            
+            fetch('/save_concepts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('服务器响应:', result);  // 调试日志
+                if (result.success) {
+                    alert('保存成功！');
+                    console.log('保存的数据:', data);
+                } else {
+                    alert('保存失败：' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('保存出错:', error);  // 调试日志
+                alert('保存失败：' + error);
+            });
+        };
+    </script>
+</body>
+</html> 

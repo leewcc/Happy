@@ -30,7 +30,8 @@ def insert_into_database(data):
         cursor = conn.cursor()
 
         for index, row in data.iterrows():
-            stock_code = row['symbol']
+            print(row)
+            stock_code = row['ts_code']
             stock_name = row['name']
             area = row['area']
             industry = row['industry']
