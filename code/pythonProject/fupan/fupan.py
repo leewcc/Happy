@@ -466,7 +466,7 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
                 'D': '跌停',
                 'Z': '炸板'
             }.get(stock_dict['limit_type'], stock_dict['limit_type'])
-            
+            stock_dict['stock_code'] = stock_dict['ts_code'][:6]    
             all_limit_stocks.append(stock_dict)
         
         market_data['all_limit_stocks'] = all_limit_stocks

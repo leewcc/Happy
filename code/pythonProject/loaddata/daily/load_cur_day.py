@@ -191,7 +191,7 @@ def insert_into_daily_data_table(stock_code, stock_name, data, specified_date):
 
 if __name__ == "__main__":
     # 指定日期，格式为 'YYYYMMDD'
-    specified_date = '20250305'
+    specified_date = '20250306'
     specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
     sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

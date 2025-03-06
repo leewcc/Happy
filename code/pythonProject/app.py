@@ -76,6 +76,7 @@ def limit_stocks_page():
                 flash('核心概念保存成功！', 'success')
             
             # 重要：在这里直接重定向，而不是继续执行
+            print("触发重定向")
             return redirect(url_for('limit_stocks_page', date=query_date))
             
         except Exception as e:

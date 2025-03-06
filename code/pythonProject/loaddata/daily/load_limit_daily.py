@@ -155,24 +155,45 @@ def print_analysis_results(results, concept_stats, industry_stats):
     ...
 
 def format_time(time_str):
-    """格式化时间字符串"""
-    if time_str:
-        try:
-            if len(time_str) == 5:
-                hours = int(time_str[0])
-                minutes = int(time_str[1:3])
-                seconds = int(time_str[3:])
-            elif len(time_str) == 6:
-                hours = int(time_str[:2])
-                minutes = int(time_str[2:4])
-                seconds = int(time_str[4:])
-            else:
-                return None
+    """格式化时间字符串
+    支持两种格式：
+    1. HH:MM:SS 格式 (如 "09:52:21")
+    2. HHMMSS 格式 (如 "95221")
+    """
+    if not time_str:
+        return None
+        
+    try:
+        # 如果已经是 HH:MM:SS 格式，直接返回
+        if isinstance(time_str, str) and ':' in time_str:
+            # 验证格式是否正确
+            try:
+                hours, minutes, seconds = map(int, time_str.split(':'))
+                if 0 <= hours < 24 and 0 <= minutes < 60 and 0 <= seconds < 60:
+                    return time_str
+            except:
+                pass
 
-            if 0 <= hours < 24 and 0 <= minutes < 60 and 0 <= seconds < 60:
-                return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        except ValueError:
-            pass
+        # 转换为字符串并去除所有非数字字符
+        time_str = ''.join(filter(str.isdigit, str(time_str)))
+        
+        if len(time_str) == 5:  # 95221 格式
+            hours = int(time_str[0])
+            minutes = int(time_str[1:3])
+            seconds = int(time_str[3:])
+        elif len(time_str) == 6:  # 095221 格式
+            hours = int(time_str[:2])
+            minutes = int(time_str[2:4])
+            seconds = int(time_str[4:])
+        else:
+            return None
+
+        if 0 <= hours < 24 and 0 <= minutes < 60 and 0 <= seconds < 60:
+            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            
+    except (ValueError, TypeError, AttributeError):
+        pass
+        
     return None
 
 def inspect_concept_data(trade_date):
@@ -233,60 +254,86 @@ def get_limit_stocks_page(trade_date=None):
     if trade_date is None:
         trade_date = datetime.now().strftime('%Y%m%d')
     
-    df = get_limit_list_data(trade_date)
+    # 创建新的数据库连接
+    conn = pymysql.connect(
+        host='localhost',
+        user='root',
+        password='root',
+        database='happy',
+        charset='utf8mb4',
+        use_unicode=True
+    )
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     
-    # 获取股票的已保存核心概念 - 移除 concept 的限制条件
-    concept_map = {}
     try:
-        concept_query = """
-            SELECT ts_code, concept 
-            FROM limit_stocks 
-            WHERE trade_date = %s
+        # 从数据库获取涨跌停数据
+        query = """
+            SELECT 
+                ls.ts_code,
+                ls.name,
+                ls.first_time,
+                ls.limit_times,
+                ls.reason,
+                ls.concept,
+                ls.industry
+            FROM limit_stocks ls
+            WHERE ls.trade_date = %s
+            ORDER BY ls.first_time
         """
-        cursor.execute(concept_query, (trade_date,))
-        for ts_code, concept in cursor.fetchall():
-            # 如果 concept 是 None，转换为空字符串
-            concept_map[ts_code] = concept if concept else ''
+        cursor.execute(query, (trade_date,))
+        stocks = cursor.fetchall()
+        print(f"\n从数据库获取到 {len(stocks)} 条涨跌停数据")
+        
+        # 处理每条股票数据
+        stocks_info = []
+        for stock in stocks:
+            ts_code = stock['ts_code']
+            
+            # 获取概念信息
+            concept_query = """
+                SELECT sector_name 
+                FROM concept_stock 
+                WHERE stock_code = %s
+            """
+            cursor.execute(concept_query, (ts_code,))
+            original_concepts = [row['sector_name'] for row in cursor.fetchall()]
+            
+            # 过滤和合并概念
+            filtered_concepts = set()
+            for concept in original_concepts:
+                if concept not in CONCEPT_BLACKLIST:
+                    normalized = normalize_concept(concept)
+                    filtered_concepts.add(normalized)
+            
+            # 处理核心概念
+            core_concepts = stock['concept'] or ''
+            core_concept_list = [c.strip() for c in core_concepts.split(',') if c.strip()]
+            
+            stock_info = {
+                'ts_code': ts_code,
+                'name': stock['name'],
+                'first_time': format_time(stock['first_time']) if stock['first_time'] else '',
+                'industry': stock['industry'] or '-',
+                'reason': stock['reason'] or '',
+                'concepts': ', '.join(sorted(filtered_concepts)) if filtered_concepts else '-',
+                'lbd_num': stock['limit_times'] or 0,
+                'core_concept1': core_concept_list[0] if len(core_concept_list) > 0 else '',
+                'core_concept2': core_concept_list[1] if len(core_concept_list) > 1 else '',
+                'core_concept3': core_concept_list[2] if len(core_concept_list) > 2 else ''
+            }
+            print(f"\n处理股票: {stock_info['name']} ({stock_info['ts_code']})")
+            print(f"核心概念: {core_concepts}")
+            stocks_info.append(stock_info)
+        
+        return stocks_info
+        
     except Exception as e:
-        print(f"获取核心概念失败: {str(e)}")
-    
-    # 获取每个股票的行业和概念信息
-    stocks_info = []
-    for _, row in df.iterrows():
-        ts_code = row['ts_code']
-        industry, concepts = get_stock_info(ts_code)
+        print(f"获取涨跌停数据失败: {str(e)}")
+        return []
         
-        # 初始化核心概念字段
-        core_concept1 = ''
-        core_concept2 = ''
-        core_concept3 = ''
-        
-        # 如果有保存的核心概念，进行解析
-        saved_concept = concept_map.get(ts_code, '')
-        if saved_concept:
-            concept_list = [c.strip() for c in saved_concept.split(',') if c.strip()]
-            if len(concept_list) > 0:
-                core_concept1 = concept_list[0]
-            if len(concept_list) > 1:
-                core_concept2 = concept_list[1]
-            if len(concept_list) > 2:
-                core_concept3 = concept_list[2]
-        
-        stock_info = {
-            'ts_code': ts_code,
-            'name': row['name'],
-            'first_time': format_time(row.get('first_time', '')),
-            'industry': industry,
-            'reason': row.get('reason', ''),
-            'concepts': concepts,
-            'lbd_num': row.get('limit_times', 0),
-            'core_concept1': core_concept1,
-            'core_concept2': core_concept2,
-            'core_concept3': core_concept3
-        }
-        stocks_info.append(stock_info)
-    
-    return stocks_info
+    finally:
+        cursor.close()
+        conn.close()
 
 def save_core_concepts(data, trade_date):
     """保存核心概念到数据库"""

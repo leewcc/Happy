@@ -48,13 +48,14 @@ def stock_kline(stock_code):
         return {'code': 1, 'msg': '股票代码不能为空'}, 400
     
     try:
-        # 添加数据库配置
+        # 修改数据库配置
         config = {
             'user': 'root',
             'password': 'root',
             'host': 'localhost',
             'database': 'happy',
-            'raise_on_warnings': True
+            'raise_on_warnings': True,
+            'auth_plugin': 'mysql_native_password'  # 添加这行，使用传统认证方式
         }
         
         connection = mysql.connector.connect(**config)

@@ -611,8 +611,8 @@
             <table id="limit-down-table" class="tablesorter compact-table">
                 <thead>
                     <tr>
-                        <th>股票名称</th>
                         <th>连板天数</th>
+                        <th>股票名称</th>
                         <th>换手率(%)</th>
                         <th>成交额(亿)</th>
                         <th>总市值(亿)</th>
@@ -625,11 +625,11 @@
                     {% for stock in data.all_limit_stocks %}
                         {% if stock.limit_type == '跌停' %}
                         <tr>
+                            <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                             <td data-code="{{ stock.stock_code }}" 
                                 onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
                                 {{ stock.name }}
                             </td>
-                            <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                             <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                             <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
                             <td data-sort-value="{{ stock.total_mv }}">{{ stock.total_mv }}</td>
@@ -682,8 +682,8 @@
                     <table class="concept-table tablesorter">
                         <thead>
                             <tr>
-                                <th>股票名称</th>
                                 <th>连板天数</th>
+                                <th>股票名称</th>
                                 <th>首次涨停时间</th>
                                 <th>最后涨停时间</th>
                                 <th>涨停类型</th>
@@ -697,11 +697,11 @@
                         <tbody>
                             {% for stock in concept.limit_up_stocks %}
                             <tr>
+                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td data-code="{{ stock.stock_code }}" 
                                     onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
                                     {{ stock.stock_name }}
                                 </td>
-                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td>{{ stock.first_time }}</td>
                                 <td>{{ stock.last_time }}</td>
                                 <td><span class="limit-up">涨停</span></td>
@@ -723,6 +723,7 @@
                     <table class="concept-table tablesorter">
                         <thead>
                             <tr>
+                                <th>连板天数</th>
                                 <th>股票名称</th>
                                 <th>收盘涨幅</th>
                                 <th>换手率(%)</th>
@@ -735,6 +736,7 @@
                         <tbody>
                             {% for stock in concept.broken_stocks %}
                             <tr>
+                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td data-code="{{ stock.stock_code }}" 
                                     onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
                                     {{ stock.stock_name }}
@@ -758,8 +760,8 @@
                     <table class="concept-table tablesorter">
                         <thead>
                             <tr>
-                                <th>股票名称</th>
                                 <th>连板天数</th>
+                                <th>股票名称</th>
                                 <th>换手率(%)</th>
                                 <th>成交额(亿)</th>
                                 <th>总市值(亿)</th>
@@ -771,11 +773,11 @@
                         <tbody>
                             {% for stock in concept.limit_down_stocks %}
                             <tr>
+                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td data-code="{{ stock.stock_code }}" 
                                     onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
                                     {{ stock.stock_name }}
                                 </td>
-                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
                                 <td data-sort-value="{{ stock.turnover_ratio }}">{{ "%.2f" % stock.turnover_ratio }}</td>
                                 <td data-sort-value="{{ stock.amount }}">{{ stock.amount }}</td>
                                 <td data-sort-value="{{ stock.total_mv }}">{{ stock.total_mv }}</td>
