@@ -189,50 +189,100 @@ def insert_into_daily_data_table(stock_code, stock_name, data, specified_date):
             print(traceback.format_exc())
 
 
+def calculate_up_down_stats(specified_date, conn):
+    """
+    计算指定日期的上涨下跌家数统计
+    """
+    cursor = conn.cursor()
+    
+    try:
+        # 使用SQL直接统计上涨下跌家数
+        cursor.execute("""
+            SELECT 
+                SUM(CASE WHEN price_change_rate > 0 THEN 1 ELSE 0 END) as up_count,
+                SUM(CASE WHEN price_change_rate < 0 THEN 1 ELSE 0 END) as down_count
+            FROM daily_data
+            WHERE trade_date = %s
+        """, (specified_date,))
+        
+        result = cursor.fetchone()
+        
+        stats = {
+            'up_count': int(result[0]) if result[0] else 0,
+            'down_count': int(result[1]) if result[1] else 0
+        }
+        
+        # 插入统计数据
+        insert_sql = """
+            INSERT INTO limit_stats (trade_date, item, count)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE count = VALUES(count)
+        """
+        
+        for item, count in stats.items():
+            cursor.execute(insert_sql, (specified_date, item, count))
+        
+        conn.commit()
+        print(f"成功插入{specified_date}的上涨下跌统计：上涨{stats['up_count']}家，"
+              f"下跌{stats['down_count']}家")
+        
+    except Exception as e:
+        print(f"计算或插入{specified_date}的上涨下跌统计数据时出错: {str(e)}")
+        conn.rollback()
+
+
 if __name__ == "__main__":
-    # 指定日期，格式为 'YYYYMMDD'
-    specified_date = '20250307'
-    specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
-    sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
+    try:
+        # 指定日期，格式为 'YYYYMMDD'
+        specified_date = '20250307'
+        specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
+        sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 
-    all_codes = get_all_stock_codes()
-    for ts_code, stock_code, stock_name in all_codes:
-        try:
-            # 获取指定日期前 60 天内的日线数据
-            daily_data = pro.daily(ts_code=ts_code, start_date=sixty_days_ago, end_date=specified_date)
-            if not daily_data.empty:
-                # 按日期升序排序
-                daily_data = daily_data.sort_values(by='trade_date')
+        all_codes = get_all_stock_codes()
+        for ts_code, stock_code, stock_name in all_codes:
+            try:
+                # 获取指定日期前 60 天内的日线数据
+                daily_data = pro.daily(ts_code=ts_code, start_date=sixty_days_ago, end_date=specified_date)
+                if not daily_data.empty:
+                    # 按日期升序排序
+                    daily_data = daily_data.sort_values(by='trade_date')
 
-                # 获取指定日期的基本面数据
-                daily_basic_data = pro.daily_basic(ts_code=ts_code, trade_date=specified_date)
-                if not daily_basic_data.empty:
-                    # 合并基本面数据到日线数据，指定 suffixes 为空字符串
-                    merged_data = pd.merge(daily_data, daily_basic_data, on=['ts_code', 'trade_date'], how='left', suffixes=('', '_drop'))
-                    # 删除多余的列
-                    columns_to_drop = [col for col in merged_data.columns if col.endswith('_drop')]
-                    daily_data = merged_data.drop(columns=columns_to_drop)
+                    # 获取指定日期的基本面数据
+                    daily_basic_data = pro.daily_basic(ts_code=ts_code, trade_date=specified_date)
+                    if not daily_basic_data.empty:
+                        # 合并基本面数据到日线数据，指定 suffixes 为空字符串
+                        merged_data = pd.merge(daily_data, daily_basic_data, on=['ts_code', 'trade_date'], how='left', suffixes=('', '_drop'))
+                        # 删除多余的列
+                        columns_to_drop = [col for col in merged_data.columns if col.endswith('_drop')]
+                        daily_data = merged_data.drop(columns=columns_to_drop)
 
-                # 获取指定日期的涨跌停价格
-                stk_limit_data = pro.stk_limit(ts_code=ts_code, trade_date=specified_date)
-                if not stk_limit_data.empty:
-                    # 合并涨跌停价格数据到日线数据
-                    daily_data = pd.merge(daily_data, stk_limit_data, on=['ts_code', 'trade_date'], how='left')
+                    # 获取指定日期的涨跌停价格
+                    stk_limit_data = pro.stk_limit(ts_code=ts_code, trade_date=specified_date)
+                    if not stk_limit_data.empty:
+                        # 合并涨跌停价格数据到日线数据
+                        daily_data = pd.merge(daily_data, stk_limit_data, on=['ts_code', 'trade_date'], how='left')
 
-                # 计算技术指标
-                daily_data = calculate_indicators(daily_data)
-                # 计算是否涨停、是否炸板和是否跌停
-                daily_data = calculate_limit_info(daily_data, stock_name)
-                # 插入指定日期的数据到 daily_data 表
-                insert_into_daily_data_table(stock_code, stock_name, daily_data, specified_date)
-                print(f"{stock_code} 数据插入成功。")
-        except Exception as e:
-            tb = traceback.extract_tb(e.__traceback__)
-            last_frame = tb[-1]
-            line_number = last_frame.lineno
-            print(f"获取 {stock_code} 数据时出错: {e}，错误发生在第 {line_number} 行")
-            print(traceback.format_exc())
+                    # 计算技术指标
+                    daily_data = calculate_indicators(daily_data)
+                    # 计算是否涨停、是否炸板和是否跌停
+                    daily_data = calculate_limit_info(daily_data, stock_name)
+                    # 插入指定日期的数据到 daily_data 表
+                    insert_into_daily_data_table(stock_code, stock_name, daily_data, specified_date)
+                    print(f"{stock_code} 数据插入成功。")
+            except Exception as e:
+                tb = traceback.extract_tb(e.__traceback__)
+                last_frame = tb[-1]
+                line_number = last_frame.lineno
+                print(f"获取 {stock_code} 数据时出错: {e}，错误发生在第 {line_number} 行")
+                print(traceback.format_exc())
 
-    # 关闭数据库连接
-    cursor.close()
-    conn.close()
+        # 在处理完所有股票数据后，计算上涨下跌统计
+        calculate_up_down_stats(specified_date, conn)
+
+    except Exception as e:
+        print(f"处理数据时出错: {e}")
+        print(traceback.format_exc())
+    finally:
+        # 关闭数据库连接
+        cursor.close()
+        conn.close()

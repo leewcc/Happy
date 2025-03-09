@@ -118,6 +118,78 @@ def stock_kline(stock_code):
         print(f"发生错误: {str(e)}") # 调试日志
         return {'code': 1, 'msg': str(e)}
 
+@app.route('/index_kline/<index_code>')
+def index_kline(index_code):
+    if not index_code:
+        return {'code': 1, 'msg': '指数代码不能为空'}, 400
+    
+    try:
+        config = {
+            'user': 'root',
+            'password': 'root',
+            'host': 'localhost',
+            'database': 'happy',
+            'raise_on_warnings': True,
+            'auth_plugin': 'mysql_native_password'
+        }
+        
+        connection = mysql.connector.connect(**config)
+        cursor = connection.cursor()
+        
+        # 获取最近120天的日线数据
+        kline_query = """
+        WITH recent_dates AS (
+            SELECT trade_date
+            FROM index_daily_data 
+            WHERE ts_code = %s
+            ORDER BY trade_date DESC
+            LIMIT 120
+        )
+        SELECT idd.trade_date, idd.open, idd.close, idd.low, idd.high, 
+               idd.amount,
+               idd.ma_5, idd.ma_10, idd.ma_20, idd.ma_60,
+               idd.boll_up, idd.boll_mid, idd.boll_low
+        FROM index_daily_data idd
+        JOIN recent_dates rd ON idd.trade_date = rd.trade_date
+        WHERE idd.ts_code = %s
+        ORDER BY idd.trade_date ASC
+        """
+        
+        cursor.execute(kline_query, (index_code, index_code))
+        data = cursor.fetchall()
+        
+        # 格式化数据
+        kline_data = []
+        for row in data:
+            trade_date = row[0]
+            # 将 trade_date 从字符串格式 (如 "20250309") 转换为 "2025-03-09" 格式
+            formatted_date = f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:]}"
+            
+            kline_data.append({
+                'trade_date': formatted_date,
+                'open': float(row[1]) if row[1] is not None else None,
+                'close': float(row[2]) if row[2] is not None else None,
+                'low': float(row[3]) if row[3] is not None else None,
+                'high': float(row[4]) if row[4] is not None else None,
+                'amount': round(float(row[5]) / 100000, 2) if row[5] is not None else None,  # 从千元转换为亿元
+                'ma_5': float(row[6]) if row[6] is not None else None,
+                'ma_10': float(row[7]) if row[7] is not None else None,
+                'ma_20': float(row[8]) if row[8] is not None else None,
+                'ma_60': float(row[9]) if row[9] is not None else None,
+                'boll_up': float(row[10]) if row[10] is not None else None,
+                'boll_mid': float(row[11]) if row[11] is not None else None,
+                'boll_low': float(row[12]) if row[12] is not None else None
+            })
+        
+        cursor.close()
+        connection.close()
+        
+        return {'code': 0, 'data': kline_data}
+        
+    except Exception as e:
+        print(f"发生错误: {str(e)}")
+        return {'code': 1, 'msg': str(e)}
+
 def format_change_rate(code, rate):
     """格式化涨跌幅"""
     # 如果是字符串，先转换为数字

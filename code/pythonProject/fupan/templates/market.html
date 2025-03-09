@@ -433,7 +433,7 @@
             <div class="market-card index-card">
                 <h3>指数行情</h3>
                 {% for index in data.index_changes %}
-                <div class="index-line">
+                <div class="index-line" data-code="{{ index.code }}">
                     <span class="index-name">{{ index.name }}</span>
                     <span class="index-change {{ 'positive' if index.is_positive else 'negative' }}">{{ index.change }}</span>
                 </div>
@@ -1251,6 +1251,263 @@
         };
         
         document.getElementById('klineTooltip').onmouseleave = handleStockLeave;
+
+        // 处理指数K线图的显示
+        function handleIndexHover(event, indexCode, indexName) {
+            clearTimeout(tooltipTimer);
+            
+            const tooltip = document.getElementById('klineTooltip');
+            const chart = document.getElementById('klineChart');
+            
+            // 计算悬浮框位置
+            const rect = event.currentTarget.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            
+            let left = rect.left + scrollLeft;
+            let top = rect.top + scrollTop + rect.height;
+            
+            if (left + tooltip.offsetWidth > window.innerWidth) {
+                left = window.innerWidth - tooltip.offsetWidth - 20;
+            }
+            
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.display = 'block';
+            
+            // 加载K线数据
+            fetch(`/index_kline/${indexCode}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.code === 0 && result.data && result.data.length > 0) {
+                        const klineData = result.data;
+                        
+                        // 使用与股票K线图相同的配置，但修改标题
+                        const option = {
+                            title: {
+                                text: `${indexName} K线图`,
+                                left: 'center'
+                            },
+                            tooltip: {
+                                trigger: 'axis',
+                                axisPointer: {
+                                    type: 'cross'
+                                },
+                                textStyle: {
+                                    fontSize: 14  // 增大提示框字号
+                                }
+                            },
+                            legend: {
+                                data: ['K线', 'MA5', 'MA10', 'MA20', 'MA60', 'BOLL上轨', 'BOLL中轨', 'BOLL下轨', '成交额'],
+                                top: '30px',
+                                textStyle: {
+                                    fontSize: 14
+                                }
+                            },
+                            grid: [{
+                                left: '10%',
+                                right: '10%',
+                                height: '60%',  // K线图占据60%的高度
+                                top: '5%'
+                            }, {
+                                left: '10%',
+                                right: '10%',
+                                height: '20%',  // 成交额图占据20%的高度
+                                bottom: '5%'
+                            }],
+                            xAxis: [{
+                                type: 'category',
+                                data: klineData.map(item => item.trade_date),
+                                scale: true,
+                                gridIndex: 0,  // 对应第一个 grid
+                                axisLabel: {
+                                    fontSize: 12,
+                                    rotate: 30
+                                }
+                            }, {
+                                type: 'category',
+                                gridIndex: 1,  // 对应第二个 grid
+                                data: klineData.map(item => item.trade_date),
+                                axisLabel: {show: false}  // 不显示第二个 x 轴的标签
+                            }],
+                            yAxis: [{
+                                scale: true,
+                                splitArea: {
+                                    show: true
+                                },
+                                axisLabel: {
+                                    fontSize: 12
+                                },
+                                gridIndex: 0  // 对应第一个 grid
+                            }, {
+                                scale: true,
+                                gridIndex: 1,  // 对应第二个 grid
+                                name: '成交额(亿)',
+                                axisLabel: {
+                                    formatter: function(value) {
+                                        if (value >= 100) {
+                                            return (value/100).toFixed(1) + '百';
+                                        } else if (value >= 10) {
+                                            return value.toFixed(1);
+                                        } else {
+                                            return value.toFixed(2);
+                                        }
+                                    }
+                                },
+                                splitLine: {
+                                    show: true,
+                                    lineStyle: {
+                                        opacity: 0.1
+                                    }
+                                }
+                            }],
+                            series: [
+                                {
+                                    name: 'K线',
+                                    type: 'candlestick',
+                                    data: klineData.map(item => [item.open, item.close, item.low, item.high]),
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0
+                                },
+                                {
+                                    name: 'MA5',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_5),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#000000',      // 黑色
+                                        width: 1              // 设置线宽为1px
+                                    }
+                                },
+                                {
+                                    name: 'MA10',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_10),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#800080',      // 紫色
+                                        width: 1
+                                    }
+                                },
+                                {
+                                    name: 'MA20',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_20),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#FFD700',      // 黄色
+                                        width: 1
+                                    }
+                                },
+                                {
+                                    name: 'MA60',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.ma_60),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#FF0000',      // 红色
+                                        width: 1
+                                    }
+                                },
+                                {
+                                    name: 'BOLL上轨',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.boll_up),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#FF0000',     // 红色
+                                        width: 1,
+                                        type: 'solid'
+                                    }
+                                },
+                                {
+                                    name: 'BOLL中轨',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.boll_mid),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#800080',     // 紫色
+                                        width: 1,
+                                        type: 'solid'
+                                    }
+                                },
+                                {
+                                    name: 'BOLL下轨',
+                                    xAxisIndex: 0,
+                                    yAxisIndex: 0,
+                                    type: 'line',
+                                    data: klineData.map(item => item.boll_low),
+                                    smooth: true,
+                                    showSymbol: false,
+                                    lineStyle: {
+                                        opacity: 0.6,
+                                        color: '#00FF00',     // 绿色
+                                        width: 1,
+                                        type: 'solid'
+                                    }
+                                },
+                                {
+                                    name: '成交额',
+                                    xAxisIndex: 1,
+                                    yAxisIndex: 1,
+                                    type: 'bar',
+                                    data: klineData.map(item => item.amount),
+                                    itemStyle: {
+                                        color: function(params) {
+                                            const k = klineData[params.dataIndex];
+                                            return k.close >= k.open ? '#f56c6c' : '#67c23a';  // 收盘价>=开盘价用红色，否则用绿色
+                                        }
+                                    },
+                                    label: {
+                                        show: false
+                                    }
+                                }
+                            ]
+                        };
+                        
+                        klineChart.setOption(option);
+                        klineChart.resize();
+                    }
+                })
+                .catch(error => {
+                    console.error('获取K线数据失败:', error);
+                });
+        }
+
+        // 为指数行添加悬浮事件
+        document.addEventListener('DOMContentLoaded', function() {
+            const indexLines = document.querySelectorAll('.index-line');
+            indexLines.forEach(line => {
+                const indexCode = line.getAttribute('data-code');
+                const indexName = line.querySelector('.index-name').textContent;
+                line.onmouseenter = (e) => handleIndexHover(e, indexCode, indexName);
+                line.onmouseleave = handleStockLeave;
+            });
+        });
     </script>
 </body>
 </html> 

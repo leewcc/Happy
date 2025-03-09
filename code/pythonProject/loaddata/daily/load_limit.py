@@ -174,6 +174,53 @@ def insert_limit_stocks(data, trade_date):
             print(f"插入 {row['ts_code']} 的数据时出错: {str(e)}")
             conn.rollback()
 
+def calculate_limit_stats(data, trade_date):
+    """
+    计算涨跌停统计数据并插入数据库
+    """
+    try:
+        # 初始化统计数据
+        stats = {
+            'limit_up_count': 0,    # 涨停数
+            'limit_down_count': 0,  # 跌停数
+            'broken_count': 0,      # 炸板数
+            'consecutive_count': 0   # 连板数
+        }
+        
+        # 统计各项数据
+        for _, row in data.iterrows():
+            limit_type = row['limit']
+            if limit_type == 'U':  # 涨停
+                stats['limit_up_count'] += 1
+                # 连板数统计（limit_times > 1 的为连板）
+                if pd.notna(row['limit_times']) and row['limit_times'] > 1:
+                    stats['consecutive_count'] += 1
+            elif limit_type == 'D':  # 跌停
+                stats['limit_down_count'] += 1
+            elif limit_type == 'Z':  # 炸板
+                stats['broken_count'] += 1
+        
+        # 插入统计数据
+        insert_sql = """
+        INSERT INTO limit_stats (trade_date, item, count)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE count = VALUES(count)
+        """
+        
+        # 批量插入所有统计项
+        for item, count in stats.items():
+            cursor.execute(insert_sql, (trade_date, item, count))
+        
+        conn.commit()
+        print(f"成功插入统计数据：涨停{stats['limit_up_count']}家，"
+              f"跌停{stats['limit_down_count']}家，"
+              f"炸板{stats['broken_count']}家，"
+              f"连板{stats['consecutive_count']}家")
+        
+    except Exception as e:
+        print(f"插入统计数据时出错: {str(e)}")
+        conn.rollback()
+
 def main(trade_date=None):
     """
     主函数
@@ -186,13 +233,18 @@ def main(trade_date=None):
         
         # 清除当日已有数据
         cursor.execute("DELETE FROM limit_stocks WHERE trade_date = %s", (trade_date,))
+        cursor.execute("DELETE FROM limit_stats WHERE trade_date = %s", (trade_date,))
         conn.commit()
         
         # 获取并插入新数据
         limit_data = get_limit_data(trade_date)
         if not limit_data.empty:
+            # 插入涨跌停明细数据
             insert_limit_stocks(limit_data, trade_date)
             print(f"成功处理 {len(limit_data)} 条涨跌停数据")
+            
+            # 计算并插入统计数据
+            calculate_limit_stats(limit_data, trade_date)
         else:
             print("没有获取到涨跌停数据")
             

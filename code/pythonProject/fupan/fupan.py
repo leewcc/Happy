@@ -148,6 +148,7 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             
             market_data['index_changes'].append({
                 'name': index_name,
+                'code': index_code,
                 'change': f"{change_percentage:.2f}%",
                 'is_positive': change_percentage > 0,
                 'close': f"{close_price:.2f}",

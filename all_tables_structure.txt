@@ -314,6 +314,20 @@ CREATE TABLE `stock` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10793 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `limit_stats`
+--
+
+DROP TABLE IF EXISTS `limit_stats`;
+CREATE TABLE `limit_stats` (
+  `trade_date` varchar(8) NOT NULL COMMENT '交易日期',
+  `item` varchar(50) NOT NULL COMMENT '统计项目',
+  `count` int DEFAULT 0 COMMENT '计数',
+  PRIMARY KEY (`trade_date`, `item`),
+  KEY `idx_trade_date` (`trade_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='涨跌停统计表';
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
