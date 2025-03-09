@@ -231,11 +231,6 @@ def main(trade_date=None):
             
         print(f"开始处理 {trade_date} 的涨跌停数据...")
         
-        # 清除当日已有数据
-        cursor.execute("DELETE FROM limit_stocks WHERE trade_date = %s", (trade_date,))
-        cursor.execute("DELETE FROM limit_stats WHERE trade_date = %s", (trade_date,))
-        conn.commit()
-        
         # 获取并插入新数据
         limit_data = get_limit_data(trade_date)
         if not limit_data.empty:
