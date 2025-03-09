@@ -443,13 +443,18 @@
             <!-- 涨跌家数 -->
             <div class="market-card">
                 <h3>涨跌统计</h3>
-                <p>上涨家数: <span class="positive">{{ data.market_overview.up_count }}</span></p>
-                <p>下跌家数: <span class="negative">{{ data.market_overview.down_count }}</span></p>
-                <p>涨跌比: 
-                    <span class="{{ 'positive' if data.market_overview.up_count > data.market_overview.down_count else 'negative' }}">
-                        {{ "%.2f"|format(data.market_overview.up_count / data.market_overview.down_count) if data.market_overview.down_count else '∞' }}
-                    </span>
-                </p>
+                <div class="market-overview">
+                    <div class="overview-item">
+                        <span class="item-label">上涨家数</span>
+                        <span class="item-value text-red">{{ data.market_overview.up_count }}</span>
+                    </div>
+                    <div class="overview-item">
+                        <span class="item-label">下跌家数</span>
+                        <span class="item-value text-green">{{ data.market_overview.down_count }}</span>
+                    </div>
+                </div>
+                <!-- 添加折线图容器 -->
+                <div id="updownTrendChart" style="width: 100%; height: 300px;"></div>
             </div>
 
             <!-- 涨跌幅分布 -->
@@ -1507,6 +1512,92 @@
                 line.onmouseenter = (e) => handleIndexHover(e, indexCode, indexName);
                 line.onmouseleave = handleStockLeave;
             });
+        });
+
+        // 初始化上涨下跌趋势图
+        var updownChart = echarts.init(document.getElementById('updownTrendChart'));
+        var dates = {{ data.updown_trend.dates|tojson|safe }};
+        var upCounts = {{ data.updown_trend.up_counts|tojson|safe }};
+        var downCounts = {{ data.updown_trend.down_counts|tojson|safe }};
+
+        var updownOption = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                }
+            },
+            legend: {
+                data: ['上涨家数', '下跌家数'],
+                top: 10
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: dates.map(date => {
+                    return date.substring(4, 6) + '-' + date.substring(6);  // 转换为 MM-DD 格式
+                }),
+                axisLabel: {
+                    formatter: '{value}'
+                }
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                }
+            },
+            series: [
+                {
+                    name: '上涨家数',
+                    type: 'line',
+                    data: upCounts,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    itemStyle: {
+                        color: '#fff',  // 点的填充色改为白色
+                        borderColor: '#f56c6c',
+                        borderWidth: 1,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#f56c6c',  // 明确指定线条颜色
+                        width: 2
+                    }
+                },
+                {
+                    name: '下跌家数',
+                    type: 'line',
+                    data: downCounts,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    itemStyle: {
+                        color: '#fff',
+                        borderColor: '#67c23a',
+                        borderWidth: 1,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#67c23a',  // 明确指定线条颜色
+                        width: 2
+                    }
+                }
+            ]
+        };
+
+        updownChart.setOption(updownOption);
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', function() {
+            updownChart.resize();
         });
     </script>
 </body>

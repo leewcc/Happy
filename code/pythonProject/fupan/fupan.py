@@ -110,7 +110,8 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'consecutive_limit_stocks': {},
             'all_limit_stocks': [],
             'pre_consecutive_stocks': [],
-            'yesterday_consecutive_stocks': []
+            'yesterday_consecutive_stocks': [],
+            'updown_trend': {}
         }
 
         # 定义指数代码和名称的映射
@@ -570,6 +571,73 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             market_data['yesterday_stats']['board_broken_median_gain'] = "无数据"
             market_data['yesterday_stats']['board_broken_avg_gain'] = "无数据"
 
+        # 获取近10天的上涨下跌家数
+        updown_query = """
+        WITH dates AS (
+            SELECT DISTINCT trade_date 
+            FROM limit_stats 
+            WHERE trade_date <= %s 
+            ORDER BY trade_date DESC 
+            LIMIT 10
+        )
+        SELECT ls.trade_date, ls.item, ls.count
+        FROM limit_stats ls
+        JOIN dates d ON ls.trade_date = d.trade_date
+        WHERE ls.item IN ('up_count', 'down_count')
+        ORDER BY ls.trade_date ASC
+        """
+        cursor.execute(updown_query, (target_date_formatted,))
+        updown_results = cursor.fetchall()
+        
+        print("\n原始数据:")
+        for row in updown_results:
+            print(f"日期: {row[0]}, 项目: {row[1]}, 数量: {row[2]}")
+
+        # 处理数据为两个列表
+        dates = []
+        up_counts = []
+        down_counts = []
+        temp_data = {}  # 用于临时存储每个日期的数据
+
+        # 先按日期整理数据
+        for row in updown_results:
+            date = row[0]
+            item = row[1]
+            count = row[2]
+            
+            if date not in temp_data:
+                temp_data[date] = {'up_count': None, 'down_count': None}
+            
+            if item == 'up_count':
+                temp_data[date]['up_count'] = count
+            elif item == 'down_count':
+                temp_data[date]['down_count'] = count
+
+        print("\n整理后的临时数据:")
+        for date, counts in temp_data.items():
+            print(f"日期: {date}, 上涨: {counts['up_count']}, 下跌: {counts['down_count']}")
+
+        # 只保留同时有上涨和下跌数据的日期
+        for date, counts in temp_data.items():
+            if counts['up_count'] is not None and counts['down_count'] is not None:
+                # 跳过上涨下跌都为0的数据
+                if counts['up_count'] == 0 and counts['down_count'] == 0:
+                    print(f"跳过零数据日期: {date}")
+                    continue
+                dates.append(date)
+                up_counts.append(counts['up_count'])
+                down_counts.append(counts['down_count'])
+
+        print("\n最终数据:")
+        for i in range(len(dates)):
+            print(f"日期: {dates[i]}, 上涨: {up_counts[i]}, 下跌: {down_counts[i]}")
+
+        market_data['updown_trend'] = {
+            'dates': dates,
+            'up_counts': up_counts,
+            'down_counts': down_counts
+        }
+
         cursor.close()
         connection.close()
         return market_data
@@ -597,7 +665,8 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'concept_stats': [],
             'yesterday_stats': {},
             'pre_consecutive_stocks': [],
-            'yesterday_consecutive_stocks': []
+            'yesterday_consecutive_stocks': [],
+            'updown_trend': {}
         }
 
 def group_consecutive_stocks(stocks):
