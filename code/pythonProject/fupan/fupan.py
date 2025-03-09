@@ -100,21 +100,7 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
         previous_date_formatted = datetime.strptime(previous_date, '%Y-%m-%d').strftime('%Y%m%d')
         pre_previous_date_formatted = datetime.strptime(pre_previous_date, '%Y-%m-%d').strftime('%Y%m%d')
 
-        # 定义指数代码和名称的映射
-        index_mapping = {
-            '000001.SH': '上证指数',
-            '399001.SZ': '深圳成指',
-            '399006.SZ': '创业板指'
-        }
-
-        # 指数日线数据表查询 今日的上证指数、深圳成指、创业板指的涨跌幅
-        index_query = """
-        SELECT ts_code, pct_chg
-        FROM index_daily_data
-        WHERE trade_date = %s AND ts_code IN ('000001.SH', '399001.SZ', '399006.SZ')
-        """
-        cursor.execute(index_query, (target_date_formatted,))
-        index_results = cursor.fetchall()
+        # 初始化 market_data 字典
         market_data = {
             'market_overview': {},
             'index_changes': [],
@@ -126,16 +112,65 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'pre_consecutive_stocks': [],
             'yesterday_consecutive_stocks': []
         }
+
+        # 定义指数代码和名称的映射
+        index_mapping = {
+            '000001.SH': '上证指数',
+            '399001.SZ': '深证成指',
+            '399006.SZ': '创业板指',
+            '000016.SH': '上证50',
+            '000300.SH': '沪深300',
+            '000905.SH': '中证500',
+            '000852.SH': '中证1000',
+            '000688.SH': '科创50',
+            '899050.BJ': '北证50'
+        }
+
+        # 修改指数日线数据表查询
+        index_query = """
+        SELECT ts_code, pct_chg, close, pre_close
+        FROM index_daily_data
+        WHERE trade_date = %s AND ts_code IN ({})
+        """.format(','.join(['%s'] * len(index_mapping)))
+        
+        # 构建查询参数
+        query_params = [target_date_formatted] + list(index_mapping.keys())
+        cursor.execute(index_query, query_params)
+        index_results = cursor.fetchall()
+
+        # 处理指数数据
         for result in index_results:
             index_code = result[0]
             index_name = index_mapping.get(index_code, index_code)
             change_percentage = result[1]
-            # 不再添加 HTML 标签，只返回数值
+            close_price = result[2]
+            pre_close = result[3]
+            
             market_data['index_changes'].append({
                 'name': index_name,
                 'change': f"{change_percentage:.2f}%",
-                'is_positive': change_percentage > 0  # 添加一个标志来表示是否为正值
+                'is_positive': change_percentage > 0,
+                'close': f"{close_price:.2f}",
+                'pre_close': f"{pre_close:.2f}"
             })
+
+        # 修改指数优先级排序
+        index_priority = [
+            '上证指数', 
+            '深证成指', 
+            '创业板指',
+            '上证50',
+            '沪深300',
+            '中证500',
+            '中证1000',
+            '科创50',
+            '北证50'
+        ]
+
+        # 按照优先级排序
+        market_data['index_changes'].sort(key=lambda x: (
+            index_priority.index(x['name']) if x['name'] in index_priority else len(index_priority)
+        ))
 
         # 股票日线表统计当天的上涨股票数，下跌股票数
         stock_query = """
