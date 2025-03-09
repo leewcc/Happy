@@ -145,7 +145,7 @@ def save_concept_stocks_to_db(concept_code, concept_name):
 if __name__ == "__main__":
     # 示例用法
     # 1. 搜索包含特定关键词的概念
-    keyword = "DeepSeek概念"  # 可以修改为你想搜索的关键词
+    keyword = "机器人概念"  # 可以修改为你想搜索的关键词
     print(f"\n搜索包含 '{keyword}' 的概念板块:")
     concepts = search_concept(keyword)
     for concept in concepts:

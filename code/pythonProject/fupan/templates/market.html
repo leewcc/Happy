@@ -723,7 +723,7 @@
                     <table class="concept-table tablesorter">
                         <thead>
                             <tr>
-                                <th>连板天数</th>
+                                <th>首次涨停时间</th>
                                 <th>股票名称</th>
                                 <th>收盘涨幅</th>
                                 <th>换手率(%)</th>
@@ -736,7 +736,7 @@
                         <tbody>
                             {% for stock in concept.broken_stocks %}
                             <tr>
-                                <td data-sort-value="{{ stock.limit_times }}">{{ stock.limit_times }}</td>
+                                <td data-sort-value="{{ stock.first_time }}">{{ stock.first_time }}</td>
                                 <td data-code="{{ stock.stock_code }}" 
                                     onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
                                     {{ stock.stock_name }}
