@@ -111,7 +111,8 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'all_limit_stocks': [],
             'pre_consecutive_stocks': [],
             'yesterday_consecutive_stocks': [],
-            'updown_trend': {}
+            'updown_trend': {},
+            'limit_trend': {}
         }
 
         # 定义指数代码和名称的映射
@@ -638,6 +639,65 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'down_counts': down_counts
         }
 
+        # 获取近120天的涨跌停数据趋势
+        limit_trend_query = """
+        WITH dates AS (
+            SELECT DISTINCT trade_date 
+            FROM limit_stats 
+            WHERE trade_date <= %s 
+            ORDER BY trade_date DESC 
+            LIMIT 120
+        )
+        SELECT ls.trade_date, ls.item, ls.count
+        FROM limit_stats ls
+        JOIN dates d ON ls.trade_date = d.trade_date
+        WHERE ls.item IN ('limit_up_count', 'limit_down_count', 'broken_count', 'consecutive_count')
+        ORDER BY ls.trade_date ASC
+        """
+        cursor.execute(limit_trend_query, (target_date_formatted,))
+        limit_trend_results = cursor.fetchall()
+
+        # 处理数据
+        limit_dates = []
+        limit_up_counts = []
+        limit_down_counts = []
+        broken_counts = []
+        consecutive_counts = []
+        temp_data = {}
+
+        # 按日期整理数据
+        for row in limit_trend_results:
+            date = row[0]
+            item = row[1]
+            count = row[2]
+            
+            if date not in temp_data:
+                temp_data[date] = {
+                    'limit_up_count': None,
+                    'limit_down_count': None,
+                    'broken_count': None,
+                    'consecutive_count': None
+                }
+            
+            temp_data[date][item] = count
+
+        # 只保留有完整数据的日期
+        for date, counts in temp_data.items():
+            if all(v is not None for v in counts.values()):
+                limit_dates.append(date)
+                limit_up_counts.append(counts['limit_up_count'])
+                limit_down_counts.append(counts['limit_down_count'])
+                broken_counts.append(counts['broken_count'])
+                consecutive_counts.append(counts['consecutive_count'])
+
+        market_data['limit_trend'] = {
+            'dates': limit_dates,
+            'limit_up_counts': limit_up_counts,
+            'limit_down_counts': limit_down_counts,
+            'broken_counts': broken_counts,
+            'consecutive_counts': consecutive_counts
+        }
+
         cursor.close()
         connection.close()
         return market_data
@@ -666,7 +726,8 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'yesterday_stats': {},
             'pre_consecutive_stocks': [],
             'yesterday_consecutive_stocks': [],
-            'updown_trend': {}
+            'updown_trend': {},
+            'limit_trend': {}
         }
 
 def group_consecutive_stocks(stocks):

@@ -251,5 +251,5 @@ def main(trade_date=None):
 
 if __name__ == "__main__":
     # 可以传入指定日期，格式为'YYYYMMDD'
-    main('20250307')
+    main('20250311')
     

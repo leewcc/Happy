@@ -512,6 +512,9 @@
             </table>
         </div>
 
+        <!-- 添加涨跌停趋势图 -->
+        <div id="limitTrendChart" style="width: 100%; height: 300px; margin-top: 20px;"></div>
+
         <!-- 昨日行情追踪 -->
         <h3>昨日行情追踪</h3>
         <div class="table-scroll-container">
@@ -1598,6 +1601,157 @@
         // 响应窗口大小变化
         window.addEventListener('resize', function() {
             updownChart.resize();
+        });
+
+        // 初始化涨跌停趋势图
+        var limitTrendChart = echarts.init(document.getElementById('limitTrendChart'));
+        var limitDates = {{ data.limit_trend.dates|tojson|safe }};
+        var limitUpCounts = {{ data.limit_trend.limit_up_counts|tojson|safe }};
+        var limitDownCounts = {{ data.limit_trend.limit_down_counts|tojson|safe }};
+        var brokenCounts = {{ data.limit_trend.broken_counts|tojson|safe }};
+        var consecutiveCounts = {{ data.limit_trend.consecutive_counts|tojson|safe }};
+
+        var limitTrendOption = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                }
+            },
+            legend: {
+                data: ['涨停数', '跌停数', '炸板数', '连板数'],
+                top: 10
+            },
+            dataZoom: [
+                {
+                    type: 'slider',
+                    show: true,
+                    start: 80,
+                    end: 100,
+                    bottom: 10,
+                    height: 20,
+                    borderColor: '#ccc',
+                    backgroundColor: '#f5f7fa',
+                    fillerColor: 'rgba(167,183,204,0.4)',
+                    handleSize: '110%',
+                    handleStyle: {
+                        color: '#fff',
+                        borderColor: '#ACB8D1'
+                    },
+                    textStyle: {
+                        color: '#333'
+                    }
+                },
+                {
+                    type: 'inside',
+                    start: 80,
+                    end: 100,
+                    zoomOnMouseWheel: true,
+                    moveOnMouseMove: true,
+                    moveOnMouseWheel: true
+                }
+            ],
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '15%',  // 为缩放控件留出空间
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: limitDates.map(date => {
+                    return date.substring(4, 6) + '-' + date.substring(6);
+                }),
+                axisLabel: {
+                    formatter: '{value}'
+                }
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                }
+            },
+            series: [
+                {
+                    name: '涨停数',
+                    type: 'line',
+                    data: limitUpCounts,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    itemStyle: {
+                        color: '#fff',
+                        borderColor: '#f56c6c',
+                        borderWidth: 1,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#f56c6c',
+                        width: 2
+                    }
+                },
+                {
+                    name: '跌停数',
+                    type: 'line',
+                    data: limitDownCounts,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    itemStyle: {
+                        color: '#fff',
+                        borderColor: '#67c23a',
+                        borderWidth: 1,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#67c23a',
+                        width: 2
+                    }
+                },
+                {
+                    name: '炸板数',
+                    type: 'line',
+                    data: brokenCounts,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    itemStyle: {
+                        color: '#fff',
+                        borderColor: '#e6a23c',
+                        borderWidth: 1,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#e6a23c',
+                        width: 2
+                    }
+                },
+                {
+                    name: '连板数',
+                    type: 'line',
+                    data: consecutiveCounts,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    itemStyle: {
+                        color: '#fff',
+                        borderColor: '#409EFF',
+                        borderWidth: 1,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#409EFF',
+                        width: 2
+                    }
+                }
+            ]
+        };
+
+        limitTrendChart.setOption(limitTrendOption);
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', function() {
+            limitTrendChart.resize();
         });
     </script>
 </body>
