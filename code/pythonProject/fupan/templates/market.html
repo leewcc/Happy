@@ -513,7 +513,8 @@
         </div>
 
         <!-- 添加涨跌停趋势图 -->
-        <div id="limitTrendChart" style="width: 100%; height: 300px; margin-top: 20px;"></div>
+        <h3>涨跌停趋势</h3>
+        <div id="limitTrendChart" style="width: 100%; height: 400px;"></div>
 
         <!-- 昨日行情追踪 -->
         <h3>昨日行情追踪</h3>
@@ -617,6 +618,10 @@
                 {% endfor %}
             </table>
         </div>
+
+        <!-- 连板高度趋势图 -->
+        <h3>连板高度趋势</h3>
+        <div id="consecutiveHeightChart" style="width: 100%; height: 300px; margin-bottom: 20px;"></div>
 
         <!-- 当日连板股票 -->
         <h3>当日连板股票</h3>
@@ -1752,6 +1757,156 @@
         // 响应窗口大小变化
         window.addEventListener('resize', function() {
             limitTrendChart.resize();
+        });
+
+        // 初始化连板高度趋势图
+        var consecutiveHeightChart = echarts.init(document.getElementById('consecutiveHeightChart'));
+        var consecutiveDates = {{ data.consecutive_height_trend.dates|tojson|safe }};
+        var maxConsecutiveValues = {{ data.consecutive_height_trend.max_consecutive_values|tojson|safe }};
+        var maxConsecutiveStocks = {{ data.consecutive_height_trend.max_consecutive_stocks|tojson|safe }};
+
+        var consecutiveHeightOption = {
+            tooltip: {
+                trigger: 'axis',
+                formatter: function(params) {
+                    var date = params[0].axisValue;
+                    var value = params[0].data;
+                    var stockIndex = params[0].dataIndex;
+                    var stocks = maxConsecutiveStocks[stockIndex] || '';
+                    
+                    var result = date + '<br/>' + '最高连板: ' + value + '板';
+                    if (stocks) {
+                        result += '<br/>代表股: ' + stocks;
+                    }
+                    return result;
+                }
+            },
+            title: {
+                text: '连板高度趋势',
+                left: 'center'
+            },
+            dataZoom: [
+                {
+                    type: 'slider',
+                    show: true,
+                    start: 80,
+                    end: 100,
+                    bottom: 10,
+                    height: 20,
+                    borderColor: '#ccc',
+                    backgroundColor: '#f5f7fa',
+                    fillerColor: 'rgba(167,183,204,0.4)',
+                    handleSize: '110%',
+                    handleStyle: {
+                        color: '#fff',
+                        borderColor: '#ACB8D1'
+                    },
+                    textStyle: {
+                        color: '#333'
+                    }
+                },
+                {
+                    type: 'inside',
+                    start: 80,
+                    end: 100,
+                    zoomOnMouseWheel: true,
+                    moveOnMouseMove: true,
+                    moveOnMouseWheel: true
+                }
+            ],
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '15%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: consecutiveDates.map(date => {
+                    return date.substring(4, 6) + '-' + date.substring(6);
+                }),
+                axisLabel: {
+                    formatter: '{value}'
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '连板数',
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                },
+                min: 0,
+                minInterval: 1
+            },
+            series: [
+                {
+                    name: '最高连板',
+                    type: 'line',
+                    data: maxConsecutiveValues,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: {
+                        color: '#fff',
+                        borderColor: '#f56c6c',
+                        borderWidth: 2,
+                        borderType: 'solid'
+                    },
+                    lineStyle: {
+                        color: '#f56c6c',
+                        width: 2
+                    },
+                    markPoint: {
+                        symbolSize: 1,  // 使标记点几乎不可见
+                        itemStyle: {
+                            color: 'transparent'  // 完全透明
+                        },
+                        data: [
+                            ...maxConsecutiveValues.map((value, index) => {
+                                if (value >= 3) {
+                                    // 检查是否是连续相同股票的最后一天
+                                    let isLastDay = true;
+                                    if (index < maxConsecutiveValues.length - 1) {
+                                        const currentStock = maxConsecutiveStocks[index].split(',')[0];
+                                        const nextStock = maxConsecutiveStocks[index + 1].split(',')[0];
+                                        if (currentStock === nextStock) {
+                                            isLastDay = false;
+                                        }
+                                    }
+
+                                    return {
+                                        value: value,
+                                        xAxis: index,
+                                        yAxis: value,
+                                        name: maxConsecutiveStocks[index].split(',')[0] + '\n' + value + '板',
+                                        label: {
+                                            show: true,
+                                            formatter: '{b}',
+                                            color: '#f56c6c',
+                                            fontSize: 12,
+                                            position: index % 2 === 0 ? 'top' : 'bottom',
+                                            backgroundColor: 'rgba(255,255,255,0.8)',
+                                            padding: [4, 6],
+                                            borderRadius: 3,
+                                            show: isLastDay  // 只在最后一天显示标签
+                                        }
+                                    };
+                                }
+                                return null;
+                            }).filter(item => item !== null)
+                        ]
+                    }
+                }
+            ]
+        };
+
+        consecutiveHeightChart.setOption(consecutiveHeightOption);
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', function() {
+            consecutiveHeightChart.resize();
         });
     </script>
 </body>

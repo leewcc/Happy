@@ -698,6 +698,53 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'consecutive_counts': consecutive_counts
         }
 
+        # 获取近30天的连板高度趋势
+        max_consecutive_query = """
+        SELECT ls.trade_date, 
+               COALESCE(MAX(ls.limit_times), 0) as max_consecutive,
+               (SELECT GROUP_CONCAT(name SEPARATOR ',') 
+                FROM limit_stocks 
+                WHERE trade_date = ls.trade_date 
+                AND limit_type = 'U' 
+                AND limit_times = COALESCE(MAX(ls.limit_times), 0)
+                LIMIT 3) as stock_names
+        FROM limit_stocks ls
+        WHERE ls.trade_date <= %s 
+        AND ls.trade_date >= DATE_SUB(%s, INTERVAL 30 DAY)
+        AND ls.limit_type = 'U'
+        AND EXISTS (
+            SELECT 1 FROM limit_stocks 
+            WHERE trade_date = ls.trade_date 
+            AND limit_type = 'U'
+        )
+        GROUP BY ls.trade_date
+        ORDER BY ls.trade_date ASC
+        """
+        cursor.execute(max_consecutive_query, (target_date_formatted, target_date_formatted))
+        max_consecutive_results = cursor.fetchall()
+
+        # 处理数据
+        consecutive_dates = []
+        max_consecutive_values = []
+        max_consecutive_stocks = []
+
+        for row in max_consecutive_results:
+            date = row[0]
+            max_consecutive = row[1]
+            stock_names = row[2] if row[2] else ""
+            
+            # 只添加有涨停数据的日期
+            if max_consecutive > 0:
+                consecutive_dates.append(date)
+                max_consecutive_values.append(max_consecutive)
+                max_consecutive_stocks.append(stock_names)
+
+        market_data['consecutive_height_trend'] = {
+            'dates': consecutive_dates,
+            'max_consecutive_values': max_consecutive_values,
+            'max_consecutive_stocks': max_consecutive_stocks
+        }
+
         cursor.close()
         connection.close()
         return market_data
