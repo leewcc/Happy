@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import pymysql
 import time
+from get_limit_stocks_concepts import main as process_concepts
 
 # 设置 Tushare Pro 的 token
 ts.set_token('i593c24d0926bfb845f136082a335d64f71')  # 替换为你的token
@@ -240,6 +241,7 @@ def main(trade_date=None):
             
             # 计算并插入统计数据
             calculate_limit_stats(limit_data, trade_date)
+            
         else:
             print("没有获取到涨跌停数据")
             
@@ -248,8 +250,12 @@ def main(trade_date=None):
     finally:
         cursor.close()
         conn.close()
+        
+    # 处理概念数据
+    print("\n=== 开始处理概念数据 ===")
+    process_concepts(trade_date)
 
 if __name__ == "__main__":
     # 可以传入指定日期，格式为'YYYYMMDD'
-    main('20250311')
+    main('20250317')
     
