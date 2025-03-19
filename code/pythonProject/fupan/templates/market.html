@@ -1875,6 +1875,12 @@
                                             isLastDay = false;
                                         }
                                     }
+                                    // 检查是否是第一天出现
+                                    let isFirstDay = false;
+                                    if (index === 0 || (index > 0 && 
+                                        maxConsecutiveStocks[index].split(',')[0] !== maxConsecutiveStocks[index - 1].split(',')[0])) {
+                                        isFirstDay = true;
+                                    }
 
                                     return {
                                         value: value,
@@ -1890,7 +1896,7 @@
                                             backgroundColor: 'rgba(255,255,255,0.8)',
                                             padding: [4, 6],
                                             borderRadius: 3,
-                                            show: isLastDay  // 只在最后一天显示标签
+                                            show: isLastDay || isFirstDay  // 在第一天和最后一天显示标签
                                         }
                                     };
                                 }
