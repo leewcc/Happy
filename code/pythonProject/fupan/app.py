@@ -42,47 +42,55 @@ def stock_kline_error():
 
 @app.route('/stock_kline/<stock_code>')
 def stock_kline(stock_code):
-    print("123")
-    if not stock_code:  # 添加参数验证
-        print("code 为空")
+    # 获取日期参数
+    target_date = request.args.get('date')
+    print('收到请求:', {
+        'stock_code': stock_code,
+        'target_date': target_date,
+        'all_args': request.args,
+        'headers': dict(request.headers),
+        'url': request.url,
+        'full_path': request.full_path
+    })
+
+    if not target_date:
+        print('未提供日期参数')
+        return {'code': 1, 'msg': '请提供日期参数'}, 400
+
+    if not stock_code:
+        print('未提供股票代码')
         return {'code': 1, 'msg': '股票代码不能为空'}, 400
     
     try:
-        # 修改数据库配置
         config = {
             'user': 'root',
             'password': 'root',
             'host': 'localhost',
             'database': 'happy',
             'raise_on_warnings': True,
-            'auth_plugin': 'mysql_native_password'  # 添加这行，使用传统认证方式
+            'auth_plugin': 'mysql_native_password'
         }
         
         connection = mysql.connector.connect(**config)
         cursor = connection.cursor()
         
-        print(f"正在查询股票代码: {stock_code} 的K线数据") # 调试日志
+        print(f"正在查询股票代码: {stock_code} 的K线数据")
         
-        # 获取最近120天的日线数据，按日期降序排序后取120条，再按日期升序输出
+        # 从指定日期开始获取最近120天的日线数据
         kline_query = """
-        WITH recent_dates AS (
-            SELECT trade_date
-            FROM daily_data 
-            WHERE stock_code = %s
-            ORDER BY trade_date DESC
-            LIMIT 120
-        )
         SELECT dd.trade_date, dd.open_price, dd.close_price, dd.low_price, dd.high_price, 
                dd.turnover_amount, dd.ma_5, dd.ma_10, dd.ma_20, dd.ma_60,
-               dd.boll_up, dd.boll_mid, dd.boll_low  -- 添加 BOLL 指标数据
+               dd.boll_up, dd.boll_mid, dd.boll_low
         FROM daily_data dd
-        JOIN recent_dates rd ON dd.trade_date = rd.trade_date
         WHERE dd.stock_code = %s
-        ORDER BY dd.trade_date ASC
+        AND dd.trade_date <= %s
+        ORDER BY dd.trade_date DESC
+        LIMIT 120
         """
         
-        cursor.execute(kline_query, (stock_code, stock_code))
+        cursor.execute(kline_query, (stock_code, target_date))
         data = cursor.fetchall()
+        data = list(reversed(data))  # 反转数据，使其按日期升序
         
         print(f"查询到 {len(data)} 条数据") # 调试日志
         if len(data) > 0:
@@ -111,7 +119,6 @@ def stock_kline(stock_code):
         connection.close()
         
         result = {'code': 0, 'data': kline_data}
-        print(f"返回数据: {result}") # 调试日志
         return result
         
     except Exception as e:

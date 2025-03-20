@@ -973,7 +973,7 @@
         var tooltipTimer = null;
         
         // 处理鼠标悬浮事件
-        function handleStockHover(event, stockCode, stockName) {
+        function handleStockHover(event, stockCode, stockName, today) {
             clearTimeout(tooltipTimer);
             
             const tooltip = document.getElementById('klineTooltip');
@@ -997,7 +997,7 @@
             tooltip.style.display = 'block';
             
             // 加载K线数据
-            fetch(`/stock_kline/${stockCode}`)
+            fetch(`/stock_kline/${stockCode}?date=${today}`)
                 .then(response => response.json())
                 .then(result => {
                     console.log('获取到K线数据:', result); // 调试日志
@@ -1252,7 +1252,7 @@
                 if (td.textContent.trim()) {
                     const stockCode = td.getAttribute('data-code');
                     const stockName = td.textContent.trim();
-                    td.onmouseenter = (e) => handleStockHover(e, stockCode, stockName);
+                    td.onmouseenter = (e) => handleStockHover(e, stockCode, stockName, '{{ dates.today|replace('-', '')|replace('/', '') }}');
                     td.onmouseleave = handleStockLeave;
                 }
             });
