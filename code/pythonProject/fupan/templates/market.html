@@ -630,8 +630,8 @@
                 <tr>
                     <th>连板天数</th>
                     <th>股票名称</th>
-                    <th>首次涨停</th>
-                    <th>最后涨停</th>
+                    <th>历史最高连板</th>
+                    <th>历史最高成交额</th>
                     <th>换手率</th>
                     <th>成交额(亿)</th>
                     <th>总市值(亿)</th>
@@ -650,8 +650,8 @@
                             onmouseenter="console.log('股票代码:', '{{ stock.stock_code }}')">
                             {{ stock.name }}
                         </td>
-                        <td>{{ stock.first_time }}</td>
-                        <td>{{ stock.last_time }}</td>
+                        <td>{{ stock.history_max_limit }}板</td>
+                        <td>{{ stock.history_max_amount }}亿</td>
                         <td>{{ stock.turnover_ratio }}%</td>
                         <td>{{ stock.amount }}</td>
                         <td>{{ stock.total_mv }}</td>

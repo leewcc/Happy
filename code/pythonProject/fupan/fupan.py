@@ -420,51 +420,77 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
 
         # 从涨跌停板上获取当日的连续涨停股票的，按照连板天数从高到低输出
         consecutive_limit_stocks_query = """
-        SELECT ls.ts_code, s.stock_name, ls.limit_times, ls.first_time, ls.last_time, 
-               ls.concept, ls.industry, ls.turnover_ratio, ls.amount, 
-               ls.float_mv, ls.total_mv, ls.limit_amount
+        SELECT 
+            ls.ts_code, 
+            s.stock_name, 
+            ls.limit_times, 
+            ls.concept, 
+            ls.industry, 
+            ls.turnover_ratio, 
+            ls.amount, 
+            ls.float_mv, 
+            ls.total_mv, 
+            ls.limit_amount
         FROM limit_stocks ls
         JOIN stock s ON ls.ts_code = s.stock_code
-        WHERE ls.trade_date = %s AND ls.limit_type = 'U' AND ls.limit_times > 1 AND ls.market_type IN ('STAR', 'HS', 'GEM')
+        WHERE ls.trade_date = %s 
+        AND ls.limit_type = 'U' 
+        AND ls.limit_times > 1 
+        AND ls.market_type IN ('STAR', 'HS', 'GEM')
         ORDER BY ls.limit_times DESC
         """
         cursor.execute(consecutive_limit_stocks_query, (target_date_formatted,))
         consecutive_limit_stocks = cursor.fetchall()
 
-        # 添加详细的调试打印
-        for stock in consecutive_limit_stocks:
-            print(f"股票: {stock[1]}")
-            print(f"原始first_time: {stock[3]}, 类型: {type(stock[3])}")
-            print(f"原始last_time: {stock[4]}, 类型: {type(stock[4])}")
-            print(f"格式化后first_time: {format_time(stock[3])}")
-            print(f"格式化后last_time: {format_time(stock[4])}")
-            print("---")
+        # 获取每只股票的历史最高连板数
+        def get_history_max_limit(ts_code, current_date, limit_times):
+            # 计算本轮连板的起始日期
+            current_date_obj = datetime.strptime(current_date, '%Y%m%d')
+            start_date = (current_date_obj - timedelta(days=limit_times-1)).strftime('%Y%m%d')
+
+            # 然后查询历史最高连板数（排除本轮）
+            cursor.execute("""
+                SELECT MAX(limit_times)
+                FROM limit_stocks
+                WHERE ts_code = %s
+                AND trade_date < %s
+                AND limit_type = 'U'
+                AND trade_date < %s
+            """, (ts_code, current_date, start_date))
+            return cursor.fetchone()[0] or 0
+
+        # 获取每只股票的历史最高成交额
+        def get_history_max_amount(ts_code, current_date):
+            cursor.execute("""
+                SELECT MAX(amount)/100000000
+                FROM limit_stocks
+                WHERE ts_code = %s
+                AND trade_date < %s
+            """, (ts_code, current_date))
+            return cursor.fetchone()[0] or 0
 
         # 修改当日连板股票数据处理
-        stocks_data = [
-            {
+        stocks_data = []
+        for stock in consecutive_limit_stocks:
+            ts_code = stock[0]
+            history_max_limit = get_history_max_limit(ts_code, target_date_formatted, stock[2])
+            history_max_amount = get_history_max_amount(ts_code, target_date_formatted)
+            
+            stocks_data.append({
                 'limit_times': stock[2],
                 'name': stock[1],
-                'stock_code': stock[0][:6],  # 添加股票代码
-                'first_time': format_time(stock[3]),
-                'last_time': format_time(stock[4]),
-                'turnover_ratio': stock[7],
-                'amount': f"{stock[8] / 100000000:.2f}" if stock[8] else "0.00",
-                'concept': stock[5],
-                'industry': stock[6],
-                'total_mv': f"{stock[10] / 100000000:.2f}" if stock[10] else "0.00"
-            }
-            for stock in consecutive_limit_stocks
-        ]
-
-        # 添加调试打印
-        print("处理后的数据:", stocks_data)
+                'stock_code': ts_code[:6],
+                'history_max_limit': history_max_limit,
+                'history_max_amount': f"{history_max_amount:.2f}",
+                'turnover_ratio': stock[5],
+                'amount': f"{stock[6] / 100000000:.2f}" if stock[6] else "0.00",
+                'concept': stock[3],
+                'industry': stock[4],
+                'total_mv': f"{stock[8] / 100000000:.2f}" if stock[8] else "0.00"
+            })
 
         # 将处理后的数据按连板天数分组
         market_data['consecutive_limit_stocks'] = group_consecutive_stocks(stocks_data)
-
-        # 添加调试打印
-        print("分组后的数据:", market_data['consecutive_limit_stocks'])
 
         # 获取所有涨跌停股票数据
         all_limit_stocks_query = """
