@@ -1,4 +1,4 @@
-import tushare as ts
+import chinadata.ca_data as ts
 import pymysql
 import pandas as pd
 from ta.trend import SMAIndicator, MACD
@@ -9,7 +9,7 @@ from decimal import Decimal
 import traceback
 
 # 设置 Tushare Pro 的 token
-ts.set_token('a880b180343bdf47d774721036dabac9f9dd7ec3952c80fbe8ba515e')
+ts.set_token('i593c24d0926bfb845f136082a335d64f71')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -23,17 +23,8 @@ conn = pymysql.connect(
 cursor = conn.cursor()
 
 # 计算近 5 年的日期范围
-five_years_ago = (datetime.now() - timedelta(days=365 * 5)).strftime('%Y%m%d')
+five_years_ago = (datetime.now() - timedelta(days=365 * 10)).strftime('%Y%m%d')
 today = datetime.now().strftime('%Y%m%d')
-
-# 删除 daily_data 表中的所有数据
-try:
-    cursor.execute("TRUNCATE TABLE daily_data")
-    conn.commit()
-    print("成功清空 daily_data 表中的数据。")
-except Exception as e:
-    print(f"清空 daily_data 表数据时出错: {e}")
-
 
 def get_all_stock_codes():
     """

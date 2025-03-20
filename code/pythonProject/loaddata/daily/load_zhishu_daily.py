@@ -13,8 +13,8 @@ pro = ts.pro_api()
 # 连接到 MySQL 数据库
 conn = pymysql.connect(
     host='localhost',
-    user='root',
-    password='root',
+    user='leewcc',
+    password='leewcc',
     database='happy',
     charset='utf8mb4'
 )
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     index_codes = [row[0] for row in cursor.fetchall()]
 
     # 指定日期，格式为 'YYYYMMDD'
-    specified_date = '20250318'
+    specified_date = '20250320'
 
     for ts_code in index_codes:
         try:
