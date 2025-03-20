@@ -707,15 +707,6 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
                 WHERE trade_date = ls.trade_date 
                 AND limit_type = 'U' 
                 AND limit_times = COALESCE(MAX(ls.limit_times), 0)
-                AND stock_code IN (
-                    SELECT stock_code 
-                    FROM limit_stocks ls2 
-                    WHERE ls2.trade_date < ls.trade_date 
-                    AND ls2.limit_type = 'U' 
-                    AND ls2.trade_date >= DATE_SUB(ls.trade_date, INTERVAL limit_times-1 DAY)
-                    GROUP BY stock_code 
-                    HAVING COUNT(*) = limit_times-1
-                )
                 LIMIT 3) as stock_names
         FROM limit_stocks ls
         WHERE ls.trade_date <= %s 

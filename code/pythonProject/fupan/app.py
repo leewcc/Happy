@@ -12,70 +12,29 @@ pro = ts.pro_api()
 
 @app.route('/')
 def index():
-    try:
-        # 获取日期参数，如果没有则使用默认值
-        today = request.args.get('today', datetime.now().strftime('%Y-%m-%d'))
-        yesterday = request.args.get('yesterday', (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))
-        pre_day = request.args.get('pre_day', (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'))
-        
-        # 转换日期格式
-        dates = {
-            'today': today,
-            'yesterday': yesterday,
-            'pre_day': pre_day
-        }
+    # 获取日期参数，如果没有则使用默认值
+    today = request.args.get('today', datetime.now().strftime('%Y-%m-%d'))
+    yesterday = request.args.get('yesterday', (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))
+    pre_day = request.args.get('pre_day', (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'))
+    
+    # 转换日期格式
+    dates = {
+        'today': today,
+        'yesterday': yesterday,
+        'pre_day': pre_day
+    }
 
-        market_data = get_market_analysis(today, yesterday, pre_day)
-        
-        # 确保所有必需的数据结构都存在
-        if 'updown_trend' not in market_data:
-            market_data['updown_trend'] = {'dates': [], 'up_counts': [], 'down_counts': []}
-        if 'limit_trend' not in market_data:
-            market_data['limit_trend'] = {
-                'dates': [],
-                'limit_up_counts': [],
-                'limit_down_counts': [],
-                'broken_counts': [],
-                'consecutive_counts': []
-            }
-        if 'consecutive_height_trend' not in market_data:
-            market_data['consecutive_height_trend'] = {
-                'dates': [],
-                'max_consecutive_values': [],
-                'max_consecutive_stocks': []
-            }
-        
-        # 处理概念统计
-        if 'all_limit_stocks' in market_data:
-            concept_stats = process_concept_stocks(market_data['all_limit_stocks'])
-            market_data['concept_stats'] = concept_stats
-        
-        return render_template('market.html', 
-                             data=market_data, 
-                             format_change_rate=format_change_rate,
-                             dates=dates)
-    except Exception as e:
-        print(f"Error in index route: {str(e)}")
-        # 返回一个包含空数据的模板
-        empty_data = {
-            'updown_trend': {'dates': [], 'up_counts': [], 'down_counts': []},
-            'limit_trend': {
-                'dates': [],
-                'limit_up_counts': [],
-                'limit_down_counts': [],
-                'broken_counts': [],
-                'consecutive_counts': []
-            },
-            'consecutive_height_trend': {
-                'dates': [],
-                'max_consecutive_values': [],
-                'max_consecutive_stocks': []
-            }
-        }
-        return render_template('market.html',
-                             data=empty_data,
-                             format_change_rate=format_change_rate,
-                             dates={'today': '', 'yesterday': '', 'pre_day': ''})
+    market_data = get_market_analysis(today, yesterday, pre_day)
+    
+    # 处理概念统计
+    if 'all_limit_stocks' in market_data:
+        concept_stats = process_concept_stocks(market_data['all_limit_stocks'])
+        market_data['concept_stats'] = concept_stats
+    
+    return render_template('market.html', 
+                         data=market_data, 
+                         format_change_rate=format_change_rate,
+                         dates=dates)
 
 @app.route('/stock_kline/')  # 添加一个处理空路径的路由
 def stock_kline_error():
