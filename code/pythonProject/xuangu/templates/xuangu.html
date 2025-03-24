@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>选股器</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='xuangu.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>选股器</h1>
+            <p class="subtitle">快速筛选，精准选股</p>
+        </div>
+
+        <div class="filter-panel">
+            <!-- 行业选择 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">🏢</span>
+                    <label>行业</label>
+                </div>
+                <input type="text" id="industry" placeholder="请输入行业名称">
+            </div>
+
+            <!-- 概念选择 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">💡</span>
+                    <label>概念</label>
+                </div>
+                <div class="concept-inputs">
+                    <div class="concept-input-group">
+                        <input type="text" class="concept-input" placeholder="请输入概念">
+                        <button class="add-concept" onclick="addConceptInput()">
+                            <span class="button-icon">+</span>
+                        </button>
+                    </div>
+                    <div id="more-concepts"></div>
+                </div>
+            </div>
+
+            <!-- 成交额筛选 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">💰</span>
+                    <label>成交额</label>
+                </div>
+                <div class="turnover-inputs">
+                    <div class="input-with-label">
+                        <input type="number" id="turnover_days" placeholder="0" min="1">
+                        <span class="unit">天</span>
+                    </div>
+                    <div class="input-with-label">
+                        <input type="number" id="turnover_amount" placeholder="0">
+                        <span class="unit">亿</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 均线多头 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">📈</span>
+                    <label>均线多头</label>
+                </div>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="ma_trend" class="toggle-input">
+                    <label for="ma_trend" class="toggle-label"></label>
+                </div>
+            </div>
+
+            <button class="search-button" onclick="filterStocks()">
+                <span class="button-icon">🔍</span>
+                开始筛选
+            </button>
+        </div>
+        
+        <div class="results-panel">
+            <div class="results-header">
+                <h2>筛选结果</h2>
+                <span class="results-count" id="results-count">0 个结果</span>
+            </div>
+            <div class="table-container">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>股票名称</th>
+                            <th>涨跌幅(%)</th>
+                            <th>成交额(万)</th>
+                            <th>总市值(亿)</th>
+                            <th>所属行业</th>
+                            <th>所属概念</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addConceptInput() {
+            const container = document.getElementById('more-concepts');
+            const div = document.createElement('div');
+            div.className = 'concept-input-group';
+            div.innerHTML = `
+                <input type="text" class="concept-input" placeholder="输入概念">
+                <button class="remove-concept" onclick="this.parentElement.remove()">-</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function getAllConcepts() {
+            const concepts = [];
+            document.querySelectorAll('.concept-input').forEach(input => {
+                if (input.value.trim()) {
+                    concepts.push(input.value.trim());
+                }
+            });
+            return concepts;
+        }
+
+        function updateResultsCount(count) {
+            document.getElementById('results-count').textContent = `${count} 个结果`;
+        }
+
+        function filterStocks() {
+            const filters = {
+                industry: document.getElementById('industry').value,
+                concepts: getAllConcepts().join(','),
+                turnover_days: document.getElementById('turnover_days').value,
+                turnover_amount: document.getElementById('turnover_amount').value,
+                ma_trend: document.getElementById('ma_trend').checked
+            };
+
+            axios.post('/api/stocks', filters)
+                .then(response => {
+                    const tbody = document.getElementById('results-body');
+                    tbody.innerHTML = '';
+                    
+                    response.data.forEach(stock => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="name-cell">${stock.stock_name}</td>
+                            <td class="change-cell ${stock.change_rate >= 0 ? 'up' : 'down'}">${stock.change_rate}%</td>
+                            <td class="number-cell">${formatNumber(stock.turnover)}</td>
+                            <td class="number-cell">${formatNumber(stock.total_mv)}</td>
+                            <td class="industry-cell">${stock.industry || '-'}</td>
+                            <td class="concept-cell">${stock.concept || '-'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    updateResultsCount(response.data.length);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        function formatNumber(num) {
+            return num ? num.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) : '-';
+        }
+    </script>
+</body>
+</html> 
