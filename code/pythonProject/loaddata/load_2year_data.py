@@ -189,10 +189,32 @@ def insert_into_daily_data_table(stock_code, stock_name, data):
             line_number = last_frame.lineno
             print(f"插入 {stock_code} {trade_date} 数据时出错: {e}，错误发生在第 {line_number} 行")
 
+def check_data_exists(stock_code, date):
+    """
+    检查指定股票在指定日期的数据是否存在
+    :param stock_code: 股票代码
+    :param date: 日期字符串 (格式: YYYYMMDD)
+    :return: 布尔值，表示数据是否存在
+    """
+    check_sql = """
+    SELECT COUNT(*) FROM daily_data 
+    WHERE stock_code = %s AND trade_date = %s
+    """
+    cursor.execute(check_sql, (stock_code, date))
+    count = cursor.fetchone()[0]
+    return count > 0
+
 if __name__ == "__main__":
     all_codes = get_all_stock_codes()
+    target_date = '20250319'  # 设置目标检查日期
+    
     for ts_code, stock_code, stock_name in all_codes:
         try:
+            # 检查数据是否已存在
+            if check_data_exists(stock_code, target_date):
+                print(f"{stock_code} 在 {target_date} 的数据已存在，跳过。")
+                continue
+                
             # 获取日线数据
             daily_data = pro.daily(ts_code=ts_code, start_date=five_years_ago, end_date=today)
             if not daily_data.empty:
