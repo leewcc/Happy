@@ -176,7 +176,8 @@ def filter_stocks(filters):
             stock_name,
             price_change_rate as change_rate,
             turnover_amount/10000 as turnover,  # 转换为万元显示
-            total_mv/10000 as total_mv  # 总市值（亿）
+            total_mv/10000 as total_mv,  # 总市值（亿）
+            trade_date  # 添加交易日期
         FROM daily_data
         WHERE stock_code IN %(stock_codes)s
         AND trade_date = %(latest_date)s
