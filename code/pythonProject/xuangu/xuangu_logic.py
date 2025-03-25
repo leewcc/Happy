@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 import logging
+from sqlalchemy import text
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -124,25 +125,66 @@ def filter_stocks(filters):
     # 3. 成交额筛选
     if filters.get('turnover_days') and filters.get('turnover_amount'):
         days = int(filters['turnover_days'])
-        amount = float(filters['turnover_amount']) * 1000000  # 转换为千元（用户输入亿元）
+        amount = float(filters['turnover_amount']) 
         
-        query = """
-        SELECT stock_code, AVG(turnover_amount) as avg_amount
-        FROM daily_data
-        WHERE stock_code IN %(stock_codes)s
-        AND trade_date >= DATE_SUB(%(latest_date)s, INTERVAL %(days)s DAY)
+        # 构建 IN 子句的字符串
+        stock_codes_str = ','.join([f"'{code}'" for code in result_stocks])
+        
+        query = f"""
+        WITH recent_days AS (
+            SELECT 
+                stock_code,
+                trade_date,
+                turnover_amount/100000 as amount,  -- 转换为亿元
+                ROW_NUMBER() OVER(PARTITION BY stock_code ORDER BY trade_date DESC) as rn
+            FROM daily_data 
+            WHERE stock_code IN ({stock_codes_str})
+            AND trade_date <= '{latest_date}'
+        )
+        SELECT 
+            stock_code,
+            AVG(amount) as avg_amount
+        FROM recent_days
+        WHERE rn <= {days}
+        GROUP BY stock_code
+        HAVING avg_amount >= {amount}
+        """
+        
+        # 直接打印完整的 SQL
+        logger.info(f"SQL - 成交额筛选实际执行语句: {query}")
+        
+        # 使用参数化查询执行
+        param_query = """
+        WITH recent_days AS (
+            SELECT 
+                stock_code,
+                trade_date,
+                turnover_amount/100000 as amount,  -- 转换为亿元
+                ROW_NUMBER() OVER(PARTITION BY stock_code ORDER BY trade_date DESC) as rn
+            FROM daily_data 
+            WHERE stock_code IN %(stock_codes)s
+            AND trade_date <= %(latest_date)s
+        )
+        SELECT 
+            stock_code,
+            AVG(amount) as avg_amount
+        FROM recent_days
+        WHERE rn <= %(days)s
         GROUP BY stock_code
         HAVING avg_amount >= %(amount)s
         """
+        
         params = {
             'stock_codes': tuple(result_stocks),
             'latest_date': latest_date,
             'days': days,
             'amount': amount
         }
-        logger.info(f"SQL - 成交额筛选: {query}")
+        
+        logger.info(f"SQL - 成交额筛选: {param_query}")
         logger.info(f"参数: {params}")
-        df_turnover = pd.read_sql(query, engine, params=params)
+        
+        df_turnover = pd.read_sql(param_query, engine, params=params)
         result_stocks = set(df_turnover['stock_code'])
         logger.info(f"成交额筛选后剩余股票数: {len(result_stocks)}")
 
@@ -153,6 +195,7 @@ def filter_stocks(filters):
         FROM daily_data
         WHERE stock_code IN %(stock_codes)s
         AND trade_date = %(latest_date)s
+        AND close_price >= ma_5  # 添加股价大于等于5日均线的条件
         AND ma_5 >= ma_10 
         AND ma_10 >= ma_20 
         AND ma_20 >= ma_60

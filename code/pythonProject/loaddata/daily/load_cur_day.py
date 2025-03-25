@@ -9,7 +9,7 @@ from decimal import Decimal
 import traceback
 
 # 设置 Tushare Pro 的 token
-ts.set_token('i593c24d0926bfb845f136082a335d64f71')
+ts.set_token('qa3be0303b992b28925478054af995a1083')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -234,7 +234,7 @@ def calculate_up_down_stats(specified_date, conn):
 if __name__ == "__main__":
     try:
         # 指定日期，格式为 'YYYYMMDD'
-        specified_date = '20250324'
+        specified_date = '20250325'
         specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
         sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

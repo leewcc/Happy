@@ -135,6 +135,80 @@
         .stock-name:hover {
             background-color: #f5f7fa;
         }
+
+        .concept-stats {
+            margin-top: 30px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+
+        .concept-stats h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .concept-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            max-height: 400px;  /* 限制最大高度 */
+            overflow-y: auto;  /* 添加垂直滚动条 */
+            display: block;  /* 使滚动条生效 */
+        }
+
+        .concept-stats-table thead {
+            position: sticky;  /* 表头固定 */
+            top: 0;
+            background: white;
+            z-index: 1;
+        }
+
+        .concept-stats-table thead tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .concept-stats-table tbody {
+            display: block;
+            overflow-y: auto;
+            max-height: 350px;  /* 设置tbody的最大高度 */
+        }
+
+        .concept-stats-table tbody tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .concept-stats-table th,
+        .concept-stats-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            width: 33.33%;  /* 三列等宽 */
+        }
+
+        .concept-stats-table th {
+            background-color: var(--input-background);
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .concept-stats-table tr:hover {
+            background-color: #f8fafd;
+        }
+
+        .concept-stats-table td:nth-child(2),
+        .concept-stats-table td:nth-child(3) {
+            text-align: right;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
     </style>
 
     <script>
@@ -444,6 +518,24 @@
                         latest_date = formatDate(new Date(response.data[0].trade_date));
                     }
                     
+                    // 统计概念出现次数
+                    const conceptStats = {};
+                    response.data.forEach(stock => {
+                        if (stock.concept) {
+                            stock.concept.split(',').forEach(concept => {
+                                concept = concept.trim();
+                                if (concept && concept !== '-') {
+                                    conceptStats[concept] = (conceptStats[concept] || 0) + 1;
+                                }
+                            });
+                        }
+                    });
+                    
+                    // 转换为数组并排序
+                    const sortedConcepts = Object.entries(conceptStats)
+                        .sort((a, b) => b[1] - a[1]); // 显示所有概念
+                    
+                    // 更新表格
                     response.data.forEach(stock => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
@@ -463,6 +555,39 @@
                         });
                         nameCell.addEventListener('mouseleave', handleStockLeave);
                     });
+                    
+                    // 添加概念统计表格
+                    const statsHtml = `
+                        <div class="concept-stats">
+                            <h3>热门概念统计（共 ${sortedConcepts.length} 个）</h3>
+                            <table class="concept-stats-table">
+                                <thead>
+                                    <tr>
+                                        <th>概念</th>
+                                        <th>数量</th>
+                                        <th>占比</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${sortedConcepts.map(([concept, count]) => `
+                                        <tr>
+                                            <td>${concept}</td>
+                                            <td>${count}</td>
+                                            <td>${((count / response.data.length) * 100).toFixed(1)}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    // 在结果表格后插入概念统计
+                    const resultsPanel = document.querySelector('.results-panel');
+                    const existingStats = resultsPanel.querySelector('.concept-stats');
+                    if (existingStats) {
+                        existingStats.remove();
+                    }
+                    resultsPanel.insertAdjacentHTML('beforeend', statsHtml);
                     
                     updateResultsCount(response.data.length);
                 })
