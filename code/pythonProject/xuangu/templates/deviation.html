@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>股票涨幅偏离计算</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3b7cff;
+            --hover-color: #2d62cc;
+            --background-color: #f7f9fc;
+            --panel-color: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #e9ecef;
+            --shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 40px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .search-panel {
+            background: var(--panel-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .result-panel {
+            background: var(--panel-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .result-table th,
+        .result-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-table th {
+            background-color: var(--background-color);
+            font-weight: 500;
+        }
+
+        .up {
+            color: #f56c6c;
+        }
+
+        .down {
+            color: #67c23a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-panel">
+            <input type="text" 
+                   id="stockInput" 
+                   class="search-input" 
+                   placeholder="请输入股票代码"
+                   onkeypress="if(event.keyCode==13) searchStock()">
+        </div>
+        
+        <div class="result-panel">
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th>股票代码</th>
+                        <th>股票名称</th>
+                        <th>当前价格</th>
+                        <th>10日涨幅</th>
+                        <th>30日涨幅</th>
+                    </tr>
+                </thead>
+                <tbody id="resultBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function searchStock() {
+            const stockCode = document.getElementById('stockInput').value.trim();
+            if (!stockCode) {
+                alert('请输入股票代码');
+                return;
+            }
+
+            fetch(`/api/deviation/${stockCode}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.code === 0) {
+                        const data = result.data;
+                        document.getElementById('resultBody').innerHTML = `
+                            <tr>
+                                <td>${data.stock_code}</td>
+                                <td>${data.stock_name}</td>
+                                <td>${data.current_price}</td>
+                                <td class="${data.change_10_days >= 0 ? 'up' : 'down'}">${data.change_10_days}%</td>
+                                <td class="${data.change_30_days >= 0 ? 'up' : 'down'}">${data.change_30_days}%</td>
+                            </tr>
+                        `;
+                    } else {
+                        alert(result.msg || '查询失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('查询失败');
+                });
+        }
+    </script>
+</body>
+</html> 

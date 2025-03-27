@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, request
-from xuangu_logic import get_stock_list, filter_stocks, get_industries, get_concepts
+from xuangu_logic import get_stock_list, filter_stocks, get_industries, get_concepts, get_db_connection
 import pandas as pd
 import mysql.connector
 from datetime import datetime
@@ -117,6 +117,53 @@ def get_stock_kline(stock_code):
     except Exception as e:
         print(f"发生错误: {str(e)}") # 调试日志
         return {'code': 1, 'msg': str(e)}
+
+@app.route('/deviation')
+def deviation_page():
+    return render_template('deviation.html')
+
+@app.route('/api/deviation/<stock_code>')
+def get_deviation(stock_code):
+    try:
+        query = """
+        WITH ranked_prices AS (
+            SELECT 
+                stock_code,
+                stock_name,
+                close_price,
+                trade_date,
+                ROW_NUMBER() OVER (ORDER BY trade_date DESC) as rn
+            FROM daily_data 
+            WHERE stock_code = %(stock_code)s
+            ORDER BY trade_date DESC
+            LIMIT 31
+        )
+        SELECT 
+            a.stock_code,
+            a.stock_name,
+            a.close_price as current_price,
+            b.close_price as price_10_days,
+            c.close_price as price_30_days,
+            ROUND(((a.close_price - b.close_price) / b.close_price * 100), 2) as change_10_days,
+            ROUND(((a.close_price - c.close_price) / c.close_price * 100), 2) as change_30_days
+        FROM ranked_prices a
+        LEFT JOIN ranked_prices b ON b.rn = 11  # 10天前的价格
+        LEFT JOIN ranked_prices c ON c.rn = 31  # 30天前的价格
+        WHERE a.rn = 1  # 最新价格
+        """
+        
+        engine = get_db_connection()
+        df = pd.read_sql(query, engine, params={'stock_code': stock_code})
+        
+        if df.empty:
+            return jsonify({'code': 1, 'msg': '未找到股票数据'})
+            
+        result = df.to_dict('records')[0]
+        return jsonify({'code': 0, 'data': result})
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'code': 1, 'msg': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5002) 

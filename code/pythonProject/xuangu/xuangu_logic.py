@@ -188,27 +188,65 @@ def filter_stocks(filters):
         result_stocks = set(df_turnover['stock_code'])
         logger.info(f"成交额筛选后剩余股票数: {len(result_stocks)}")
 
-    # 4. 均线多头筛选
+    # 4. 均线多头筛选（增加均线发散条件）
     if filters.get('ma_trend') and result_stocks:
         query = """
-        SELECT stock_code
-        FROM daily_data
-        WHERE stock_code IN %(stock_codes)s
-        AND trade_date = %(latest_date)s
-        AND close_price >= ma_5  # 添加股价大于等于5日均线的条件
-        AND ma_5 >= ma_10 
-        AND ma_10 >= ma_20 
-        AND ma_20 >= ma_60
+        WITH today_data AS (
+            SELECT 
+                stock_code,
+                ma_5,
+                ma_10,
+                ma_20,
+                ma_60,
+                close_price,
+                -- 计算今天的均线间距
+                (ma_5 - ma_10) as gap_5_10_today,
+                (ma_10 - ma_20) as gap_10_20_today,
+                (ma_20 - ma_60) as gap_20_60_today
+            FROM daily_data
+            WHERE stock_code IN %(stock_codes)s
+            AND trade_date = %(latest_date)s
+        ),
+        yesterday_data AS (
+            SELECT 
+                stock_code,
+                -- 计算昨天的均线间距
+                (ma_5 - ma_10) as gap_5_10_yesterday,
+                (ma_10 - ma_20) as gap_10_20_yesterday,
+                (ma_20 - ma_60) as gap_20_60_yesterday
+            FROM daily_data
+            WHERE stock_code IN %(stock_codes)s
+            AND trade_date = (
+                SELECT MAX(trade_date) 
+                FROM daily_data 
+                WHERE trade_date < %(latest_date)s
+            )
+        )
+        SELECT t.stock_code
+        FROM today_data t
+        LEFT JOIN yesterday_data y ON t.stock_code = y.stock_code
+        WHERE 
+            -- 均线多头排列
+            t.close_price >= t.ma_5
+            AND t.ma_5 >= t.ma_10 
+            AND t.ma_10 >= t.ma_20 
+            AND t.ma_20 >= t.ma_60
+            -- 均线发散（至少两组均线间距在扩大）
+            AND (
+                (t.gap_5_10_today > y.gap_5_10_yesterday AND t.gap_10_20_today > y.gap_10_20_yesterday)
+                OR (t.gap_10_20_today > y.gap_10_20_yesterday AND t.gap_20_60_today > y.gap_20_60_yesterday)
+                OR (t.gap_5_10_today > y.gap_5_10_yesterday AND t.gap_20_60_today > y.gap_20_60_yesterday)
+            )
         """
         params = {
             'stock_codes': tuple(result_stocks),
             'latest_date': latest_date
         }
-        logger.info(f"SQL - 均线多头筛选: {query}")
+        logger.info(f"SQL - 均线多头发散筛选: {query}")
         logger.info(f"参数: {params}")
         df_ma = pd.read_sql(query, engine, params=params)
         result_stocks = set(df_ma['stock_code'])
-        logger.info(f"均线多头筛选后剩余股票数: {len(result_stocks)}")
+        logger.info(f"均线多头发散筛选后剩余股票数: {len(result_stocks)}")
 
     # 获取最终结果的详细信息
     if result_stocks:

@@ -9,7 +9,7 @@ from decimal import Decimal
 import traceback
 
 # 设置 Tushare Pro 的 token
-ts.set_token('qa3be0303b992b28925478054af995a1083')
+ts.set_token('i593c24d0926bfb845f136082a335d64f71')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -231,16 +231,41 @@ def calculate_up_down_stats(specified_date, conn):
         conn.rollback()
 
 
+def check_data_exists(stock_code, specified_date):
+    """
+    检查指定股票在指定日期的数据是否已存在
+    :param stock_code: 股票代码
+    :param specified_date: 指定日期，格式为 'YYYYMMDD'
+    :return: True 如果数据存在，False 如果数据不存在
+    """
+    try:
+        check_sql = """
+        SELECT COUNT(*) FROM daily_data 
+        WHERE stock_code = %s AND trade_date = %s
+        """
+        cursor.execute(check_sql, (stock_code, specified_date))
+        count = cursor.fetchone()[0]
+        return count > 0
+    except Exception as e:
+        print(f"检查数据是否存在时出错: {e}")
+        return False
+
+
 if __name__ == "__main__":
     try:
         # 指定日期，格式为 'YYYYMMDD'
-        specified_date = '20250325'
+        specified_date = '20250326'
         specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
         sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 
         all_codes = get_all_stock_codes()
         for ts_code, stock_code, stock_name in all_codes:
             try:
+                # 检查数据是否已存在
+                if check_data_exists(stock_code, specified_date):
+                    print(f"{stock_code} 在 {specified_date} 的数据已存在，跳过。")
+                    continue
+
                 # 获取指定日期前 60 天内的日线数据
                 daily_data = pro.daily(ts_code=ts_code, start_date=sixty_days_ago, end_date=specified_date)
                 if not daily_data.empty:
