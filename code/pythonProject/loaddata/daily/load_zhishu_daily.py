@@ -112,7 +112,7 @@ if __name__ == "__main__":
     index_codes = [row[0] for row in cursor.fetchall()]
 
     # 指定日期，格式为 'YYYYMMDD'
-    specified_date = '20250327'
+    specified_date = '20250401'
 
     for ts_code in index_codes:
         try:

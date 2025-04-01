@@ -254,7 +254,7 @@ def check_data_exists(stock_code, specified_date):
 if __name__ == "__main__":
     try:
         # 指定日期，格式为 'YYYYMMDD'
-        specified_date = '20250326'
+        specified_date = '20250401'
         specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
         sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

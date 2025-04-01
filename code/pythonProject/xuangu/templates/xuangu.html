@@ -209,6 +209,36 @@
             text-align: right;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
         }
+
+        /* 修改概念列的样式 */
+        .concept-cell {
+            max-width: 300px;  /* 设置最大宽度 */
+            white-space: normal !important;  /* 允许文本换行 */
+            word-wrap: break-word;  /* 允许长单词换行 */
+            line-height: 1.4;  /* 增加行高 */
+            padding: 8px 12px !important;  /* 增加内边距 */
+        }
+
+        /* 修改表格单元格的默认样式 */
+        #results-table td {
+            white-space: nowrap;  /* 其他列保持不换行 */
+            padding: 8px 12px;
+            vertical-align: top;  /* 顶部对齐，使多行文本看起来更整齐 */
+        }
+
+        /* 确保表格布局合理 */
+        #results-table {
+            table-layout: fixed;  /* 使用固定表格布局 */
+            width: 100%;
+        }
+
+        /* 设置各列的宽度 */
+        #results-table th:nth-child(1) { width: 12%; }  /* 股票名称 */
+        #results-table th:nth-child(2) { width: 10%; }  /* 涨跌幅 */
+        #results-table th:nth-child(3) { width: 12%; }  /* 成交额 */
+        #results-table th:nth-child(4) { width: 12%; }  /* 总市值 */
+        #results-table th:nth-child(5) { width: 14%; }  /* 所属行业 */
+        #results-table th:nth-child(6) { width: 40%; }  /* 所属概念 */
     </style>
 
     <script>

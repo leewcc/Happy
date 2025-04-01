@@ -62,6 +62,66 @@ def get_concepts():
     df = pd.read_sql(query, engine, params={'blacklist': tuple(CONCEPT_BLACKLIST)})
     return df['sector_name'].tolist()
 
+def normalize_concepts(concepts_str):
+    """合并同义概念"""
+    logger.info(f"\n开始合并同义概念: {concepts_str}")
+    if not concepts_str or concepts_str == '-':
+        logger.info("空概念字符串，返回 '-'")
+        return '-'
+    
+    concept_mapping = {
+        '国企改革': ['国企改革', '地方国企改革', '央企国企改革'],
+        '机器人': ['机器人', '减速器', '传感器', '工业化', '工业机器人'],
+        '锂电池': ['锂电池', '固态电池', '宁德时代', '钠离子电池', '锂'],
+        '半导体': ['芯片', '光刻胶', '光刻机', '先进封装', '元器件', 'PCB'],
+        '文化传媒': ['文化传媒', 'IP', '广告营销', '影视娱乐', '短剧', '出版', '知识产权'],
+        '游戏': ['游戏'],
+        '消费电子': ['消费电子', '虚拟现实', 'AI PC', '混合现实', 'AI眼镜', '柔性屏'],
+        '算力': ['算力', 'CPO', '东数西算'],
+        '无人驾驶': ['无人驾驶', '智能交通', '车路协同'],
+        '大模型': ['模态AI', 'Sora', '智谱AI', 'AI语料'],
+        '低空经济': ['低空', '无人机', '飞行汽车'],
+        '光伏': ['光伏', '钙钛矿', 'TOPCON', 'HJT'],
+        '房地产': ['物业', '房地产'],
+        '医药': ['医疗', '诊断', '药', '肝炎', 'CRO', '流感', '螺杆菌', '猴痘'],
+        '农业': ['农', '猪肉', '养鸡', '大豆', '人造肉'],
+        '零售': ['消费', '零售', '乳业'],
+        '化工': ['化工', '氢氟酸', '双氧水', '纯碱', '硝酸钠', '硫酸钾'],
+        '上海': ['浦东'],
+        '有色金属': ['金属'],
+        '合成生物': ['合成生物', '维生素'],
+        '食品': ['食品', '预制菜', '零食'],
+        '互联网金融': ['金融', '期货', '互联网金融'],
+        '数字经济': ['数字经济', '数字货币'],
+        '5G': ['5G', '6G'],
+        '三胎养老': ['三胎', '养老', '辅助生殖'],
+        '安全': ['安防', '网络安全', '数据安全'],
+        '电力': ['风电', '电网', '绿色电力'],
+        '物流': ['物流'],
+        '酒店旅游': ['旅游'],
+        '教育': ['教育'],
+        '环保': ['污水', '节能环保', '土壤修复'],
+        '化债': ['化债', 'PPP'],
+        '可控核聚变': ['核电']
+    }
+    
+    # 分割并过滤概念
+    filtered_concepts = set()  # 使用集合去重
+    for concept in concepts_str.split(','):
+        concept = concept.strip()
+        if concept not in CONCEPT_BLACKLIST:
+            # 查找并返回规范化的概念名称
+            found_match = False
+            for normalized, keywords in concept_mapping.items():
+                if any(keyword in concept for keyword in keywords):
+                    filtered_concepts.add(normalized)
+                    found_match = True
+                    break
+            if not found_match:
+                filtered_concepts.add(concept)
+    
+    return ','.join(sorted(filtered_concepts)) if filtered_concepts else '-'
+
 def filter_stocks(filters):
     """根据条件筛选股票"""
     engine = get_db_connection()
@@ -292,26 +352,51 @@ def filter_stocks(filters):
             logger.info(f"参数: {params}")
             df_industry = pd.read_sql(query, engine, params=params)
             
-            # 3. 获取概念信息（添加黑名单过滤）
+            # 3. 获取概念信息（在Python中进行过滤和合并）
             query = """
             SELECT 
                 SUBSTRING(stock_code, 1, 6) as stock_code,
-                GROUP_CONCAT(
-                    DISTINCT CASE 
-                        WHEN sector_name NOT IN %(blacklist)s THEN sector_name 
-                    END
-                ) as concept
+                GROUP_CONCAT(DISTINCT sector_name) as concept
             FROM concept_stock 
             WHERE SUBSTRING(stock_code, 1, 6) IN %(stock_codes)s
             GROUP BY SUBSTRING(stock_code, 1, 6)
             """
             params = {
-                'stock_codes': tuple(df_base['stock_code'].tolist()),
-                'blacklist': tuple(CONCEPT_BLACKLIST)
+                'stock_codes': tuple(df_base['stock_code'].tolist())
             }
             logger.info(f"SQL - 获取概念数据: {query}")
             logger.info(f"参数: {params}")
             df_concepts = pd.read_sql(query, engine, params=params)
+            
+            # 过滤黑名单概念并合并同义概念
+            def process_concepts(concepts_str):
+                logger.info(f"开始处理概念字符串: {concepts_str}")
+                if not concepts_str or concepts_str == '-':
+                    logger.info("空概念字符串，返回 '-'")
+                    return '-'
+                # 分割概念
+                concepts = concepts_str.split(',')
+                logger.info(f"分割后的概念列表: {concepts}")
+                
+                # 过滤黑名单
+                filtered_concepts = [c for c in concepts if c not in CONCEPT_BLACKLIST]
+                logger.info(f"过滤黑名单后的概念: {filtered_concepts}")
+                
+                if not filtered_concepts:
+                    logger.info("过滤后没有剩余概念，返回 '-'")
+                    return '-'
+                
+                # 合并为字符串后再进行同义词合并
+                normalized = normalize_concepts(','.join(filtered_concepts))
+                logger.info(f"同义词合并后的结果: {normalized}")
+                return normalized
+            
+            logger.info("开始处理所有股票的概念...")
+            # 应用概念处理
+            df_concepts['concept'] = df_concepts['concept'].apply(process_concepts)
+            logger.info("概念处理完成")
+            logger.info("\n处理后的概念数据示例：")
+            logger.info(df_concepts.head().to_string())
             
             # 4. 合并所有数据
             final_results = pd.merge(
