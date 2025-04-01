@@ -129,11 +129,14 @@ def filter_stocks(filters):
     
     logger.info(f"开始筛选，筛选条件: {filters}")
 
-    # 获取最新交易日期
-    query = "SELECT MAX(trade_date) as latest_date FROM daily_data"
-    logger.info(f"SQL - 获取最新日期: {query}")
-    latest_date = pd.read_sql(query, engine).iloc[0]['latest_date']
-    logger.info(f"最新交易日期: {latest_date}")
+    # 获取指定日期或最新交易日期
+    if filters.get('trade_date'):
+        latest_date = filters['trade_date']
+    else:
+        query = "SELECT MAX(trade_date) as latest_date FROM daily_data"
+        latest_date = pd.read_sql(query, engine).iloc[0]['latest_date']
+    
+    logger.info(f"使用交易日期: {latest_date}")
 
     # 1. 行业筛选
     if filters.get('industry'):

@@ -15,6 +15,15 @@
         </div>
 
         <div class="filter-panel">
+            <!-- 日期选择 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">📅</span>
+                    <label>交易日期</label>
+                </div>
+                <input type="date" id="trade_date" class="date-input">
+            </div>
+
             <!-- 行业选择 -->
             <div class="filter-item">
                 <div class="filter-label">
@@ -239,6 +248,23 @@
         #results-table th:nth-child(4) { width: 12%; }  /* 总市值 */
         #results-table th:nth-child(5) { width: 14%; }  /* 所属行业 */
         #results-table th:nth-child(6) { width: 40%; }  /* 所属概念 */
+
+        /* 添加日期选择器样式 */
+        .date-input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-background);
+            color: var(--text-color);
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+        }
     </style>
 
     <script>
@@ -531,6 +557,7 @@
 
         function filterStocks() {
             const filters = {
+                trade_date: document.getElementById('trade_date').value,
                 industry: document.getElementById('industry').value,
                 concepts: getAllConcepts().join(','),
                 turnover_days: document.getElementById('turnover_days').value,
@@ -563,30 +590,9 @@
                     
                     // 转换为数组并排序
                     const sortedConcepts = Object.entries(conceptStats)
-                        .sort((a, b) => b[1] - a[1]); // 显示所有概念
+                        .sort((a, b) => b[1] - a[1]);
                     
-                    // 更新表格
-                    response.data.forEach(stock => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="name-cell stock-name" data-code="${stock.stock_code}" data-name="${stock.stock_name}">${stock.stock_name}</td>
-                            <td class="change-cell ${stock.change_rate >= 0 ? 'up' : 'down'}">${stock.change_rate}%</td>
-                            <td class="number-cell">${formatNumber(stock.turnover)}</td>
-                            <td class="number-cell">${formatNumber(stock.total_mv)}</td>
-                            <td class="industry-cell">${stock.industry || '-'}</td>
-                            <td class="concept-cell">${stock.concept || '-'}</td>
-                        `;
-                        tbody.appendChild(row);
-
-                        // 为新添加的股票名称单元格添加悬浮事件
-                        const nameCell = row.querySelector('.stock-name');
-                        nameCell.addEventListener('mouseenter', (e) => {
-                            handleStockHover(e, stock.stock_code, stock.stock_name);
-                        });
-                        nameCell.addEventListener('mouseleave', handleStockLeave);
-                    });
-                    
-                    // 添加概念统计表格
+                    // 先更新概念统计
                     const statsHtml = `
                         <div class="concept-stats">
                             <h3>热门概念统计（共 ${sortedConcepts.length} 个）</h3>
@@ -611,13 +617,37 @@
                         </div>
                     `;
                     
-                    // 在结果表格后插入概念统计
+                    // 先清除旧的概念统计
                     const resultsPanel = document.querySelector('.results-panel');
                     const existingStats = resultsPanel.querySelector('.concept-stats');
                     if (existingStats) {
                         existingStats.remove();
                     }
-                    resultsPanel.insertAdjacentHTML('beforeend', statsHtml);
+                    
+                    // 在结果表格前插入概念统计
+                    const resultsTable = document.querySelector('.table-container');
+                    resultsTable.insertAdjacentHTML('beforebegin', statsHtml);
+                    
+                    // 更新表格数据
+                    response.data.forEach(stock => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="name-cell stock-name" data-code="${stock.stock_code}" data-name="${stock.stock_name}">${stock.stock_name}</td>
+                            <td class="change-cell ${stock.change_rate >= 0 ? 'up' : 'down'}">${stock.change_rate}%</td>
+                            <td class="number-cell">${formatNumber(stock.turnover)}</td>
+                            <td class="number-cell">${formatNumber(stock.total_mv)}</td>
+                            <td class="industry-cell">${stock.industry || '-'}</td>
+                            <td class="concept-cell">${stock.concept || '-'}</td>
+                        `;
+                        tbody.appendChild(row);
+
+                        // 为新添加的股票名称单元格添加悬浮事件
+                        const nameCell = row.querySelector('.stock-name');
+                        nameCell.addEventListener('mouseenter', (e) => {
+                            handleStockHover(e, stock.stock_code, stock.stock_name);
+                        });
+                        nameCell.addEventListener('mouseleave', handleStockLeave);
+                    });
                     
                     updateResultsCount(response.data.length);
                 })
@@ -644,6 +674,20 @@
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
+
+        // 在页面加载时获取最新交易日期并设置为默认值
+        window.addEventListener('DOMContentLoaded', () => {
+            axios.get('/api/latest_trade_date')
+                .then(response => {
+                    if (response.data && response.data.latest_date) {
+                        latest_date = response.data.latest_date;
+                        document.getElementById('trade_date').value = latest_date;
+                    }
+                })
+                .catch(error => {
+                    console.error('获取最新交易日期失败:', error);
+                });
+        });
     </script>
 </body>
 </html> 

@@ -165,5 +165,18 @@ def get_deviation(stock_code):
         print(f"Error: {str(e)}")
         return jsonify({'code': 1, 'msg': str(e)})
 
+@app.route('/api/latest_trade_date')
+def get_latest_trade_date():
+    """获取最新交易日期"""
+    try:
+        engine = get_db_connection()
+        query = "SELECT MAX(trade_date) as latest_date FROM daily_data"
+        df = pd.read_sql(query, engine)
+        latest_date = df.iloc[0]['latest_date'].strftime('%Y-%m-%d')
+        return jsonify({'code': 0, 'latest_date': latest_date})
+    except Exception as e:
+        logger.error(f"获取最新交易日期失败: {str(e)}")
+        return jsonify({'code': 1, 'msg': '获取最新交易日期失败'})
+
 if __name__ == '__main__':
     app.run(debug=True, port=5002) 
