@@ -7,6 +7,7 @@ from ta.momentum import StochasticOscillator
 from datetime import datetime, timedelta
 from decimal import Decimal
 import traceback
+from sqlalchemy import create_engine
 
 # 设置 Tushare Pro 的 token
 ts.set_token('i593c24d0926bfb845f136082a335d64f71')
@@ -15,8 +16,8 @@ pro = ts.pro_api()
 # 连接到 MySQL 数据库
 conn = pymysql.connect(
     host='localhost',
-    user='root',
-    password='root',
+    user='leewcc',
+    password='leewcc',
     database='happy',
     charset='utf8mb4'
 )
@@ -251,6 +252,81 @@ def check_data_exists(stock_code, specified_date):
         return False
 
 
+def update_turnover_avg(daily_data, specified_date, conn):
+    """
+    更新指定日期的成交额移动平均数据
+    :param daily_data: DataFrame 包含股票日线数据
+    :param specified_date: 指定日期，格式为 'YYYYMMDD'
+    :param conn: 数据库连接
+    """
+    try:
+        # 使用传入的daily_data，只需要提取需要的列
+        df = daily_data[['ts_code', 'trade_date', 'amount']].copy()
+        df.columns = ['stock_code', 'trade_date', 'turnover_amount']
+        
+        # 按股票代码分组
+        grouped = df.groupby('stock_code')
+        
+        # 存储结果的列表
+        results = []
+        
+        # 对每个股票进行处理
+        for stock_code, group in grouped:
+            # 按日期排序
+            group = group.sort_values('trade_date')
+            
+            # 计算不同天数的平均成交额
+            group['avg_1d'] = group['turnover_amount']
+            group['avg_2d'] = group['turnover_amount'].rolling(window=2).mean()
+            group['avg_3d'] = group['turnover_amount'].rolling(window=3).mean()
+            group['avg_4d'] = group['turnover_amount'].rolling(window=4).mean()
+            group['avg_5d'] = group['turnover_amount'].rolling(window=5).mean()
+            
+            # 将NaN值替换为0
+            group = group.fillna(0)
+            
+            # 只保留指定日期的数据
+            group = group[group['trade_date'] == specified_date]
+            
+            # 添加到结果列表
+            if not group.empty:
+                results.append(group[['stock_code', 'trade_date', 'avg_1d', 'avg_2d', 'avg_3d', 'avg_4d', 'avg_5d']])
+        
+        if results:
+            # 合并所有结果
+            result_df = pd.concat(results)
+            
+            # 使用现有的数据库连接执行插入
+            cursor = conn.cursor()
+            
+            # 准备插入语句
+            insert_sql = """
+            INSERT INTO stock_turnover_avg 
+            (stock_code, trade_date, avg_1d, avg_2d, avg_3d, avg_4d, avg_5d)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            
+            # 插入数据
+            for _, row in result_df.iterrows():
+                cursor.execute(insert_sql, (
+                    row['stock_code'],
+                    row['trade_date'],
+                    float(row['avg_1d']),
+                    float(row['avg_2d']),
+                    float(row['avg_3d']),
+                    float(row['avg_4d']),
+                    float(row['avg_5d'])
+                ))
+            
+            conn.commit()
+            print(f"Successfully updated turnover amount averages for {specified_date}")
+            
+    except Exception as e:
+        print(f"更新成交额移动平均数据时出错: {e}")
+        print(traceback.format_exc())
+        conn.rollback()
+
+
 if __name__ == "__main__":
     try:
         # 指定日期，格式为 'YYYYMMDD'
@@ -293,6 +369,8 @@ if __name__ == "__main__":
                     daily_data = calculate_limit_info(daily_data, stock_name)
                     # 插入指定日期的数据到 daily_data 表
                     insert_into_daily_data_table(stock_code, stock_name, daily_data, specified_date)
+                    # 更新成交额移动平均数据
+                    update_turnover_avg(daily_data, specified_date, conn)
                     print(f"{stock_code} 数据插入成功。")
             except Exception as e:
                 tb = traceback.extract_tb(e.__traceback__)

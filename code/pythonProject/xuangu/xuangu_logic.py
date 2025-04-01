@@ -185,69 +185,35 @@ def filter_stocks(filters):
         result_stocks = set(df_all['stock_code'])
         logger.info(f"未指定行业和概念，获取所有股票数: {len(result_stocks)}")
 
-    # 3. 成交额筛选
+    # 3. 成交额筛选 - 使用stock_turnover_avg表
     if filters.get('turnover_days') and filters.get('turnover_amount'):
         days = int(filters['turnover_days'])
-        amount = float(filters['turnover_amount']) 
+        amount = float(filters['turnover_amount']) * 100000  # 转换为元（输入为亿元）
         
-        # 构建 IN 子句的字符串
-        stock_codes_str = ','.join([f"'{code}'" for code in result_stocks])
-        
+        # 构建查询
+        avg_column = f'avg_{days}d'  # 根据天数选择对应的平均值列
+        if days > 5:  # 如果天数超过5天，使用5日均值
+            logger.warning(f"请求的天数 {days} 超过5天，将使用5日均值")
+            avg_column = 'avg_5d'
+            
         query = f"""
-        WITH recent_days AS (
-            SELECT 
-                stock_code,
-                trade_date,
-                turnover_amount/100000 as amount,  -- 转换为亿元
-                ROW_NUMBER() OVER(PARTITION BY stock_code ORDER BY trade_date DESC) as rn
-            FROM daily_data 
-            WHERE stock_code IN ({stock_codes_str})
-            AND trade_date <= '{latest_date}'
-        )
-        SELECT 
-            stock_code,
-            AVG(amount) as avg_amount
-        FROM recent_days
-        WHERE rn <= {days}
-        GROUP BY stock_code
-        HAVING avg_amount >= {amount}
-        """
-        
-        # 直接打印完整的 SQL
-        logger.info(f"SQL - 成交额筛选实际执行语句: {query}")
-        
-        # 使用参数化查询执行
-        param_query = """
-        WITH recent_days AS (
-            SELECT 
-                stock_code,
-                trade_date,
-                turnover_amount/100000 as amount,  -- 转换为亿元
-                ROW_NUMBER() OVER(PARTITION BY stock_code ORDER BY trade_date DESC) as rn
-            FROM daily_data 
-            WHERE stock_code IN %(stock_codes)s
-            AND trade_date <= %(latest_date)s
-        )
-        SELECT 
-            stock_code,
-            AVG(amount) as avg_amount
-        FROM recent_days
-        WHERE rn <= %(days)s
-        GROUP BY stock_code
-        HAVING avg_amount >= %(amount)s
+        SELECT DISTINCT stock_code
+        FROM stock_turnover_avg
+        WHERE trade_date = %(latest_date)s
+        AND {avg_column} >= %(amount)s
+        AND stock_code IN %(stock_codes)s
         """
         
         params = {
-            'stock_codes': tuple(result_stocks),
             'latest_date': latest_date,
-            'days': days,
-            'amount': amount
+            'amount': amount,
+            'stock_codes': tuple(result_stocks)
         }
         
-        logger.info(f"SQL - 成交额筛选: {param_query}")
+        logger.info(f"SQL - 成交额筛选: {query}")
         logger.info(f"参数: {params}")
         
-        df_turnover = pd.read_sql(param_query, engine, params=params)
+        df_turnover = pd.read_sql(query, engine, params=params)
         result_stocks = set(df_turnover['stock_code'])
         logger.info(f"成交额筛选后剩余股票数: {len(result_stocks)}")
 
