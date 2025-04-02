@@ -190,32 +190,36 @@ def filter_stocks(filters):
         days = int(filters['turnover_days'])
         amount = float(filters['turnover_amount']) * 100000  # 转换为元（输入为亿元）
         
-        # 构建查询
-        avg_column = f'avg_{days}d'  # 根据天数选择对应的平均值列
-        if days > 5:  # 如果天数超过5天，使用5日均值
-            logger.warning(f"请求的天数 {days} 超过5天，将使用5日均值")
-            avg_column = 'avg_5d'
+        # 当天数大于0时才进行成交额筛选
+        if days > 0:
+            # 构建查询
+            avg_column = f'avg_{days}d'  # 根据天数选择对应的平均值列
+            if days > 5:  # 如果天数超过5天，使用5日均值
+                logger.warning(f"请求的天数 {days} 超过5天，将使用5日均值")
+                avg_column = 'avg_5d'
+                
+            query = f"""
+            SELECT DISTINCT stock_code
+            FROM stock_turnover_avg
+            WHERE trade_date = %(latest_date)s
+            AND {avg_column} >= %(amount)s
+            AND stock_code IN %(stock_codes)s
+            """
             
-        query = f"""
-        SELECT DISTINCT stock_code
-        FROM stock_turnover_avg
-        WHERE trade_date = %(latest_date)s
-        AND {avg_column} >= %(amount)s
-        AND stock_code IN %(stock_codes)s
-        """
-        
-        params = {
-            'latest_date': latest_date,
-            'amount': amount,
-            'stock_codes': tuple(result_stocks)
-        }
-        
-        logger.info(f"SQL - 成交额筛选: {query}")
-        logger.info(f"参数: {params}")
-        
-        df_turnover = pd.read_sql(query, engine, params=params)
-        result_stocks = set(df_turnover['stock_code'])
-        logger.info(f"成交额筛选后剩余股票数: {len(result_stocks)}")
+            params = {
+                'latest_date': latest_date,
+                'amount': amount,
+                'stock_codes': tuple(result_stocks)
+            }
+            
+            logger.info(f"SQL - 成交额筛选: {query}")
+            logger.info(f"参数: {params}")
+            
+            df_turnover = pd.read_sql(query, engine, params=params)
+            result_stocks = set(df_turnover['stock_code'])
+            logger.info(f"成交额筛选后剩余股票数: {len(result_stocks)}")
+        else:
+            logger.info("天数为0，跳过成交额筛选")
 
     # 4. 均线多头筛选（增加均线发散条件）
     if filters.get('ma_trend') and result_stocks:
