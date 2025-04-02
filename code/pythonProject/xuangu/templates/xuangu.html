@@ -588,6 +588,29 @@
                         latest_date = formatDate(new Date(response.data[0].trade_date));
                     }
                     
+                    // 先更新表格数据
+                    response.data.forEach(stock => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="name-cell stock-name" data-code="${stock.stock_code}" data-name="${stock.stock_name}">${stock.stock_name}</td>
+                            <td class="change-cell ${stock.change_rate >= 0 ? 'up' : 'down'}">${stock.change_rate}%</td>
+                            <td class="number-cell">${formatNumber(stock.turnover)}</td>
+                            <td class="number-cell">${formatNumber(stock.total_mv)}</td>
+                            <td class="industry-cell">${stock.industry || '-'}</td>
+                            <td class="concept-cell">${stock.concept || '-'}</td>
+                        `;
+                        tbody.appendChild(row);
+
+                        // 为新添加的股票名称单元格添加悬浮事件
+                        const nameCell = row.querySelector('.stock-name');
+                        nameCell.addEventListener('mouseenter', (e) => {
+                            handleStockHover(e, stock.stock_code, stock.stock_name);
+                        });
+                        nameCell.addEventListener('mouseleave', handleStockLeave);
+                    });
+                    
+                    updateResultsCount(response.data.length);
+                    
                     // 统计概念出现次数
                     const conceptStats = {};
                     response.data.forEach(stock => {
@@ -605,7 +628,7 @@
                     const sortedConcepts = Object.entries(conceptStats)
                         .sort((a, b) => b[1] - a[1]);
                     
-                    // 先更新概念统计
+                    // 生成概念统计 HTML
                     const statsHtml = `
                         <div class="concept-stats">
                             <h3>热门概念统计（共 ${sortedConcepts.length} 个）</h3>
@@ -637,32 +660,9 @@
                         existingStats.remove();
                     }
                     
-                    // 在结果表格前插入概念统计
-                    const resultsTable = document.querySelector('.table-container');
-                    resultsTable.insertAdjacentHTML('beforebegin', statsHtml);
-                    
-                    // 更新表格数据
-                    response.data.forEach(stock => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="name-cell stock-name" data-code="${stock.stock_code}" data-name="${stock.stock_name}">${stock.stock_name}</td>
-                            <td class="change-cell ${stock.change_rate >= 0 ? 'up' : 'down'}">${stock.change_rate}%</td>
-                            <td class="number-cell">${formatNumber(stock.turnover)}</td>
-                            <td class="number-cell">${formatNumber(stock.total_mv)}</td>
-                            <td class="industry-cell">${stock.industry || '-'}</td>
-                            <td class="concept-cell">${stock.concept || '-'}</td>
-                        `;
-                        tbody.appendChild(row);
-
-                        // 为新添加的股票名称单元格添加悬浮事件
-                        const nameCell = row.querySelector('.stock-name');
-                        nameCell.addEventListener('mouseenter', (e) => {
-                            handleStockHover(e, stock.stock_code, stock.stock_name);
-                        });
-                        nameCell.addEventListener('mouseleave', handleStockLeave);
-                    });
-                    
-                    updateResultsCount(response.data.length);
+                    // 在表格后面添加概念统计
+                    const tableContainer = document.querySelector('.table-container');
+                    tableContainer.insertAdjacentHTML('afterend', statsHtml);
                 })
                 .catch(error => {
                     console.error('Error:', error);

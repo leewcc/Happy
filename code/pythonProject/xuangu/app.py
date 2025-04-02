@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request
 from xuangu_logic import get_stock_list, filter_stocks, get_industries, get_concepts, get_db_connection
 import pandas as pd
 import mysql.connector
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -47,6 +47,8 @@ def get_stock_kline(stock_code):
                 for fmt in ['%Y-%m-%d', '%a, %d %b %Y %H:%M:%S GMT', '%Y%m%d']:
                     try:
                         parsed_date = datetime.strptime(target_date, fmt)
+                        # 向后推5天
+                        parsed_date = parsed_date + timedelta(days=5)
                         target_date = parsed_date.strftime('%Y-%m-%d')
                         break
                     except ValueError:
