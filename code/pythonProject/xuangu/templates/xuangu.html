@@ -80,6 +80,18 @@
                 </div>
             </div>
 
+            <!-- 低吸战法 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">📉</span>
+                    <label>低吸战法</label>
+                </div>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="dip_buy" class="toggle-input">
+                    <label for="dip_buy" class="toggle-label"></label>
+                </div>
+            </div>
+
             <button class="search-button" onclick="filterStocks()">
                 <span class="button-icon">🔍</span>
                 开始筛选
@@ -562,7 +574,8 @@
                 concepts: getAllConcepts().join(','),
                 turnover_days: document.getElementById('turnover_days').value,
                 turnover_amount: document.getElementById('turnover_amount').value,
-                ma_trend: document.getElementById('ma_trend').checked
+                ma_trend: document.getElementById('ma_trend').checked,
+                dip_buy: document.getElementById('dip_buy').checked
             };
 
             axios.post('/api/stocks', filters)

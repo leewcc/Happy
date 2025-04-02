@@ -138,6 +138,91 @@ def filter_stocks(filters):
     
     logger.info(f"使用交易日期: {latest_date}")
 
+    # 低吸战法筛选
+    if filters.get('dip_buy'):
+        try:
+            # 1. 获取最近两个交易日
+            date_query = """
+            SELECT DISTINCT trade_date
+            FROM daily_data
+            WHERE trade_date <= %(latest_date)s
+            ORDER BY trade_date DESC
+            LIMIT 2
+            """
+            dates_df = pd.read_sql(date_query, engine, params={'latest_date': latest_date})
+            if len(dates_df) < 2:
+                logger.warning("没有足够的交易日数据进行低吸战法筛选")
+                return []
+            
+            # 确保日期格式统一
+            latest_date = dates_df.iloc[0]['trade_date'].strftime('%Y-%m-%d')
+            prev_date = dates_df.iloc[1]['trade_date'].strftime('%Y-%m-%d')
+            
+            logger.info(f"处理日期: latest_date={latest_date}, prev_date={prev_date}")
+            
+            # 2. 查询第一天（最新交易日）满足条件的股票
+            latest_day_query = """
+            SELECT DISTINCT stock_code
+            FROM daily_data
+            WHERE trade_date = %(latest_date)s
+            AND close_price < open_price
+            AND close_price/open_price <= 0.95
+            """
+            logger.info("执行最新交易日查询:")
+            logger.info(f"SQL: {latest_day_query}")
+            logger.info(f"参数: latest_date={latest_date}")
+            
+            latest_stocks = pd.read_sql(latest_day_query, engine, params={'latest_date': latest_date})
+            logger.info(f"最新交易日满足条件的股票数: {len(latest_stocks)}")
+            logger.info(f"最新交易日满足条件的股票列表: {sorted(latest_stocks['stock_code'].tolist())}")
+            
+            # 3. 查询前一天满足条件的股票
+            prev_day_query = """
+            SELECT DISTINCT stock_code
+            FROM daily_data
+            WHERE trade_date = %(prev_date)s
+            AND close_price < open_price
+            AND close_price/open_price <= 0.95
+            AND open_price > ma_5
+            """
+            
+            try:
+                logger.info("执行前一交易日查询:")
+                logger.info(f"SQL: {prev_day_query}")
+                logger.info(f"参数: prev_date={prev_date}")
+                
+                prev_stocks = pd.read_sql(prev_day_query, engine, params={'prev_date': prev_date})
+                logger.info(f"前一交易日满足条件的股票数: {len(prev_stocks)}")
+                logger.info(f"前一交易日满足条件的股票列表: {sorted(prev_stocks['stock_code'].tolist())}")
+                
+                # 打印被过滤掉的股票
+                latest_only = set(latest_stocks['stock_code']) - set(prev_stocks['stock_code'])
+                prev_only = set(prev_stocks['stock_code']) - set(latest_stocks['stock_code'])
+                logger.info(f"仅在最新交易日满足条件的股票: {sorted(list(latest_only))}")
+                logger.info(f"仅在前一交易日满足条件的股票: {sorted(list(prev_only))}")
+                
+                # 与之前的结果取交集（如果有的话）
+                dip_buy_stocks = set(latest_stocks['stock_code']) & set(prev_stocks['stock_code'])
+                logger.info(f"低吸战法筛选后的股票数: {len(dip_buy_stocks)}")
+                
+                # 与之前的结果取交集（如果有的话）
+                result_stocks = dip_buy_stocks if result_stocks is None else result_stocks & dip_buy_stocks
+                logger.info(f"与其他条件取交集后剩余股票数: {len(result_stocks) if result_stocks else 0}")
+                
+            except Exception as sql_error:
+                logger.error("SQL执行错误:")
+                logger.error(f"SQL语句: {prev_day_query}")
+                logger.error(f"参数: prev_date={prev_date}")
+                logger.error(f"错误信息: {str(sql_error)}")
+                raise
+            
+        except Exception as e:
+            logger.error("低吸战法筛选出错:")
+            logger.error(f"错误类型: {type(e).__name__}")
+            logger.error(f"错误信息: {str(e)}")
+            logger.error("详细堆栈:", exc_info=True)
+            return []
+
     # 1. 行业筛选
     if filters.get('industry'):
         query = """
