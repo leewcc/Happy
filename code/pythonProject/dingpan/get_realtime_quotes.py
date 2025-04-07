@@ -27,6 +27,59 @@ LIMIT_PRICE_MAP = {}
 STOCK_GROUPS = []
 NUM_THREADS = 12
 
+# 添加概念黑名单和映射
+CONCEPT_BLACKLIST = {
+    '融资融券', '转融券标的', '深股通', '人民币', '富时罗素概念股', '富时罗素概念', '沪股通', 
+    '高股息精选', '京津冀一体化', '专精特新', '台湾概念股', '统一大市场', '股权转让', 
+    '虚拟数字人', '独角兽概念', '粤港澳大湾区', '共同富裕示范区', '联想概念', '三星', 
+    '大湾区', '自贸区', '共享经济', '央视财经50', '数据交易中心', '汽车电商', '共享', 
+    '进口博览会', '自由贸易港', '海底捞概念', '海水淡化', '食盐', '溴素', '白炭黑', 
+    '同花顺', '贸易区', 'Web', '雄安新区', '快手概念', '人脸识别', '3D打印', '电子信息', 
+    '高端装备', '网络直播', '比亚迪概念', '创投', '储能', '乡村振兴', '中俄贸易概念',
+    '腾讯概念', '信创', '智慧城市', '物联网', '区块链', '抖音概念', 
+    'ChatGPT概念', '数据要素', '量子科技', '智能家居', '小米概念', 'AIGC概念', 
+    '阿里巴巴概念', '老字号', '体育产业', '云办公', '动力电池回收', '碳中和', 
+    '外贸受益概念', '长三角一体化', '军民融合', '智能穿戴', '新疆振兴',
+    'MiniLED', 'MicroLED概念', '无线耳机', '分拆上市意愿','同花顺中特估100','上证180成份股',
+    '上证50样本股', '沪深300样本股','同花顺新质50', '同花顺出海50','中证500成份股',
+}
+
+CONCEPT_MAPPING = {
+    '国企改革': ['国企改革', '地方国企改革', '央企国企改革'],
+    '机器人': ['机器人', '减速器', '传感器', '工业化', '工业机器人'],
+    '锂电池': ['锂电池', '固态电池', '宁德时代', '钠离子电池', '锂'],
+    '半导体': ['芯片', '光刻胶', '光刻机', '先进封装', '元器件', 'PCB'],
+    '文化传媒': ['文化传媒', 'IP', '广告营销', '影视娱乐', '短剧', '出版', '知识产权'],
+    '游戏': ['游戏'],
+    '消费电子': ['消费电子', '虚拟现实', 'AI PC', '混合现实', 'AI眼镜', '柔性屏'],
+    '算力': ['算力', 'CPO', '东数西算'],
+    '无人驾驶': ['无人驾驶', '智能交通', '车路协同'],
+    '大模型': ['模态AI', 'Sora', '智谱AI', 'AI语料'],
+    '低空经济': ['低空', '无人机', '飞行汽车'],
+    '光伏': ['光伏', '钙钛矿', 'TOPCON', 'HJT'],
+    '房地产': ['物业', '房地产'],
+    '医药': ['医疗', '诊断', '药', '肝炎', 'CRO', '流感', '螺杆菌', '猴痘'],
+    '农业': ['农', '猪肉', '养鸡', '大豆', '人造肉'],
+    '零售': ['消费', '零售', '乳业'],
+    '化工': ['化工', '氢氟酸', '双氧水', '纯碱', '硝酸钠', '硫酸钾'],
+    '上海': ['浦东'],
+    '有色金属': ['金属'],
+    '合成生物': ['合成生物', '维生素'],
+    '食品': ['食品', '预制菜', '零食'],
+    '互联网金融': ['金融', '期货', '互联网金融'],
+    '数字经济': ['数字经济', '数字货币'],
+    '5G': ['5G', '6G'],
+    '三胎养老': ['三胎', '养老', '辅助生殖'],
+    '安全': ['安防', '网络安全', '数据安全'],
+    '电力': ['风电', '电网', '绿色电力'],
+    '物流': ['物流'],
+    '酒店旅游': ['旅游'],
+    '教育': ['教育'],
+    '环保': ['污水', '节能环保', '土壤修复'],
+    '化债': ['化债', 'PPP'],
+    '可控核聚变': ['核电']
+}
+
 def get_db_connection():
     """获取数据库连接"""
     return pymysql.connect(**DB_CONFIG)
@@ -422,8 +475,19 @@ class QuotesManager:
             
             # 更新概念信息
             for stock_code, concepts in concept_results:
-                if stock_code in self.stock_info_cache:
-                    self.stock_info_cache[stock_code]['concepts'] = concepts or '-'
+                if stock_code in self.stock_info_cache and concepts:
+                    # 分割概念列表
+                    concept_list = concepts.split(',')
+                    # 规范化概念
+                    normalized_concepts = []
+                    for concept in concept_list:
+                        norm_concept = normalize_concept(concept.strip())
+                        if norm_concept:
+                            normalized_concepts.append(norm_concept)
+                    # 去重
+                    normalized_concepts = list(set(normalized_concepts))
+                    # 更新缓存
+                    self.stock_info_cache[stock_code]['concepts'] = ','.join(normalized_concepts) if normalized_concepts else '-'
             
             log(f"成功缓存 {len(self.stock_info_cache)} 只股票的行业和概念信息")
             
@@ -758,6 +822,21 @@ def get_stock_concepts(ts_code):
             cursor.close()
         if 'conn' in locals():
             conn.close()
+
+def normalize_concept(concept):
+    """合并同义概念"""
+    # 移除概念和主题后缀
+    concept = concept.replace('概念', '').replace('主题', '')
+    
+    # 如果在黑名单中则跳过
+    if concept in CONCEPT_BLACKLIST:
+        return None
+        
+    # 查找并返回规范化的概念名称
+    for normalized, keywords in CONCEPT_MAPPING.items():
+        if any(keyword in concept for keyword in keywords):
+            return normalized
+    return concept
 
 # 如果直接运行此文件，则启动独立进程
 if __name__ == '__main__':
