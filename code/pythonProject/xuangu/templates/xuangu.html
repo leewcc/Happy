@@ -568,8 +568,15 @@
         }
 
         function filterStocks() {
+            const tradeDate = document.getElementById('trade_date').value;
+            
+            // 更新URL，不刷新页面
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('date', tradeDate);
+            window.history.pushState({}, '', newUrl);
+
             const filters = {
-                trade_date: document.getElementById('trade_date').value,
+                trade_date: tradeDate,
                 industry: document.getElementById('industry').value,
                 concepts: getAllConcepts().join(','),
                 turnover_days: document.getElementById('turnover_days').value,
@@ -690,16 +697,28 @@
 
         // 在页面加载时获取最新交易日期并设置为默认值
         window.addEventListener('DOMContentLoaded', () => {
-            axios.get('/api/latest_trade_date')
-                .then(response => {
-                    if (response.data && response.data.latest_date) {
-                        latest_date = response.data.latest_date;
-                        document.getElementById('trade_date').value = latest_date;
-                    }
-                })
-                .catch(error => {
-                    console.error('获取最新交易日期失败:', error);
-                });
+            // 从URL获取日期参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const dateFromUrl = urlParams.get('date');
+            
+            if (dateFromUrl) {
+                // 如果URL中有日期参数，直接使用
+                document.getElementById('trade_date').value = dateFromUrl;
+                // 自动触发筛选
+                filterStocks();
+            } else {
+                // 如果URL中没有日期参数，获取最新交易日期
+                axios.get('/api/latest_trade_date')
+                    .then(response => {
+                        if (response.data && response.data.latest_date) {
+                            latest_date = response.data.latest_date;
+                            document.getElementById('trade_date').value = latest_date;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取最新交易日期失败:', error);
+                    });
+            }
         });
     </script>
 </body>

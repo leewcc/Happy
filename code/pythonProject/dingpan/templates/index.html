@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>实时盯盘系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">实时盯盘</a>
+                <div class="collapse navbar-collapse">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-tab="rank">涨跌排行</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-tab="limit">涨停分析</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-tab="sector">板块地图</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 涨跌排行页面 -->
+        <div id="rank-page" class="page-content">
+            <div class="market-overview-container">
+                <!-- 左侧指数行情 -->
+                <div class="indices-panel">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="index-list">
+                                <div class="index-item">
+                                    <span class="index-name">上证指数</span>
+                                    <div id="sh-index" class="index-data">
+                                        <span class="index-price"></span>
+                                        <span class="index-change"></span>
+                                    </div>
+                                </div>
+                                <div class="index-item">
+                                    <span class="index-name">深证成指</span>
+                                    <div id="sz-index" class="index-data">
+                                        <span class="index-price"></span>
+                                        <span class="index-change"></span>
+                                    </div>
+                                </div>
+                                <div class="index-item">
+                                    <span class="index-name">创业板指</span>
+                                    <div id="cyb-index" class="index-data">
+                                        <span class="index-price"></span>
+                                        <span class="index-change"></span>
+                                    </div>
+                                </div>
+                                <div class="index-item">
+                                    <span class="index-name">科创50</span>
+                                    <div id="kc-index" class="index-data">
+                                        <span class="index-price"></span>
+                                        <span class="index-change"></span>
+                                    </div>
+                                </div>
+                                <div class="index-item">
+                                    <span class="index-name">北证50</span>
+                                    <div id="bj-index" class="index-data">
+                                        <span class="index-price"></span>
+                                        <span class="index-change"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧成交统计 -->
+                <div class="amount-panel">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="amount-stat">
+                                <div class="stat-label">总成交额</div>
+                                <div id="total-amount" class="stat-value">0</div>
+                            </div>
+                            <div id="amount-trend"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧涨跌统计 -->
+                <div class="stats-panel">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="market-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">上涨家数</div>
+                                    <div id="up-count" class="stat-value up-color">0</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">下跌家数</div>
+                                    <div id="down-count" class="stat-value down-color">0</div>
+                                </div>
+                            </div>
+                            <div id="distribution-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 个股列表 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="stock-table"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 涨停分析页面 -->
+        <div id="limit-page" class="page-content" style="display: none;">
+            <!-- 涨停统计 -->
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">涨停统计</h5>
+                            <div id="limit-stats"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 涨停分布 -->
+            <div class="row">
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">行业分布</h5>
+                            <div id="industry-distribution"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">涨停股列表</h5>
+                            <div id="limit-up-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 板块地图页面 -->
+        <div id="sector-page" class="page-content" style="display: none;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">板块热力图</h5>
+                    <div id="sector-heatmap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="kline-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">K线图</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="kline-chart" style="height: 600px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

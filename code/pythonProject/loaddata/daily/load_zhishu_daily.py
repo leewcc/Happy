@@ -7,7 +7,7 @@ from ta.momentum import StochasticOscillator
 from datetime import datetime, timedelta
 
 # 设置 Tushare Pro 的 token
-ts.set_token('i593c24d0926bfb845f136082a335d64f71')
+ts.set_token('ne576cb10ae327812a88f58b758c3233e23')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     index_codes = [row[0] for row in cursor.fetchall()]
 
     # 指定日期，格式为 'YYYYMMDD'
-    specified_date = '20250402'
+    specified_date = '20250407'
 
     for ts_code in index_codes:
         try:

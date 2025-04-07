@@ -10,7 +10,7 @@ import traceback
 from sqlalchemy import create_engine
 
 # 设置 Tushare Pro 的 token
-ts.set_token('i593c24d0926bfb845f136082a335d64f71')
+ts.set_token('ne576cb10ae327812a88f58b758c3233e23')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -31,6 +31,7 @@ def get_all_stock_codes():
     """
     try:
         data = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name')
+        print(data)
         all_codes = data[['ts_code', 'symbol', 'name']].values.tolist()
         return all_codes
     except Exception as e:
@@ -330,7 +331,7 @@ def update_turnover_avg(daily_data, specified_date, conn):
 if __name__ == "__main__":
     try:
         # 指定日期，格式为 'YYYYMMDD'
-        specified_date = '20250402'
+        specified_date = '20250407'
         specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
         sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

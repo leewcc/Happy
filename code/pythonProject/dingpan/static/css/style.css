@@ -1,0 +1,215 @@
+.page-content {
+    padding: 20px;
+}
+
+.card {
+    margin-bottom: 20px;
+}
+
+.card-title {
+    margin-bottom: 20px;
+}
+
+#stock-list table {
+    width: 100%;
+}
+
+.up-color {
+    color: #f55;
+}
+
+.down-color {
+    color: #0c0;
+}
+
+.nav-link.active {
+    font-weight: bold;
+}
+
+/* 市场概览容器 */
+.market-overview-container {
+    display: grid;
+    grid-template-columns: 30% 35% 35%;
+    gap: 1%;
+    margin-bottom: 20px;
+    height: 280px;
+}
+
+/* 指数面板 */
+.indices-panel {
+    background: #fff;
+}
+
+.index-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.index-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.index-item:last-child {
+    border-bottom: none;
+}
+
+.index-name {
+    font-size: 14px;
+    color: #666;
+    width: 80px;
+}
+
+.index-data {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.index-price {
+    font-size: 16px;
+    font-weight: normal;
+}
+
+.index-change {
+    font-size: 14px;
+    width: 60px;
+    text-align: right;
+    font-weight: bold;
+}
+
+/* 成交额面板 */
+.amount-panel .card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.amount-stat {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+#amount-trend {
+    flex: 1;
+    min-height: 180px;
+}
+
+/* 涨跌统计面板 */
+.stats-panel .card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.market-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 10px;
+}
+
+#distribution-chart {
+    flex: 1;
+    min-height: 180px;
+}
+
+/* 表格样式 */
+.table th {
+    font-weight: normal;
+    color: #666;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+    padding: 8px 12px;  /* 统一的内边距 */
+}
+
+.table td {
+    vertical-align: middle;
+    white-space: nowrap;
+    padding: 8px 12px;  /* 统一的内边距 */
+}
+
+/* 概念列允许换行 */
+.table td:last-child {
+    white-space: normal;
+    max-width: 300px;
+    word-break: break-all;
+}
+
+/* 涨幅列右对齐 */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    text-align: right;
+}
+
+/* 表格列宽设置 */
+.table th:nth-child(1),  /* 股票名称 */
+.table td:nth-child(1) {
+    width: 100px;
+}
+
+.table th:nth-child(2),  /* 涨幅 */
+.table td:nth-child(2) {
+    width: 80px;
+}
+
+.table th:nth-child(3),  /* 成交额 */
+.table td:nth-child(3),
+.table th:nth-child(4),  /* 竞价金额 */
+.table td:nth-child(4),
+.table th:nth-child(5),  /* 早盘未竞价金额 */
+.table td:nth-child(5) {
+    width: 120px;
+}
+
+.table th:nth-child(6),  /* 所属行业 */
+.table td:nth-child(6) {
+    width: 100px;
+}
+
+.table th:last-child,  /* 概念 */
+.table td:last-child {
+    min-width: 200px;
+}
+
+/* 图表容器样式 */
+#amount-trend, #distribution-chart {
+    width: 100%;
+    background-color: #fff;
+}
+
+/* 可排序列的样式 */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 20px !important;
+}
+
+.sortable:after {
+    content: '↕';
+    position: absolute;
+    right: 5px;
+    color: #999;
+}
+
+.sortable.asc:after {
+    content: '↑';
+    color: #333;
+}
+
+.sortable.desc:after {
+    content: '↓';
+    color: #333;
+}
+
+/* 保持其他样式不变 */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    text-align: right;
+} 

@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.10)
+
+# 添加 vcpkg 工具链文件
+set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+
 project(stock_monitor)
 
 # 设置 C++ 标准
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 查找 Detours 包
+find_package(Detours CONFIG REQUIRED)
 
 # 添加库目录
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -19,10 +26,15 @@ target_include_directories(duanxianjingling PRIVATE
 )
 
 # 链接需要的库
-target_link_libraries(duanxianjingling
+target_link_libraries(duanxianjingling PRIVATE
     ws2_32
     wininet
-    detours
+    Detours::Detours
+)
+
+# 创建注入器
+add_executable(injector
+    injector.cpp
 )
 
 # 创建测试程序
