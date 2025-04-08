@@ -260,6 +260,13 @@ function updateStockList(stocks) {
         // 重新加载数据
         loadStockList();
     });
+
+    // 添加表格行点击事件
+    $('#stock-table tbody tr').click(function() {
+        const tsCode = $(this).data('ts-code');
+        const name = $(this).find('td:first').text();
+        window.klineChart.show(tsCode, name);
+    });
 }
 
 // 更新成交额趋势图

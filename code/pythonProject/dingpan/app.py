@@ -5,6 +5,7 @@ import pandas as pd
 import threading
 from get_realtime_quotes import QuotesManager
 import time
+import numpy as np
 
 app = Flask(__name__)
 
@@ -116,32 +117,116 @@ def limit_up_analysis():
 @app.route('/api/stock_kline/<ts_code>')
 def stock_kline(ts_code):
     """获取个股K线数据"""
+    stock_code = ts_code[:6]
+    print(f"\n开始获取股票 {ts_code} (代码: {stock_code}) 的K线数据...")
+    
     conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     try:
-        # 获取近120天日线数据
+        # 获取近240天日线数据
         kline_sql = """
-            SELECT trade_date, open, high, low, close, volume, amount
-            FROM daily_quotes
-            WHERE ts_code = %s
-            AND trade_date >= DATE_SUB(CURDATE(), INTERVAL 120 DAY)
-            ORDER BY trade_date
+            SELECT 
+                DATE_FORMAT(trade_date, '%%Y-%%m-%%d') as trade_date,
+                open_price as open,
+                high_price as high,
+                low_price as low,
+                close_price as close,
+                trading_volume as volume,
+                turnover_amount as amount,
+                ma_5, ma_10, ma_20, ma_60,
+                boll_up, boll_mid, boll_low
+            FROM daily_data
+            WHERE stock_code = %s
+            ORDER BY trade_date DESC 
+            LIMIT 240
         """
-        kline_df = pd.read_sql(kline_sql, conn, params=(ts_code,))
+        cursor.execute(kline_sql, (stock_code,))
+        results = cursor.fetchall()
+        print(f"从数据库获取到 {len(results)} 条K线记录")
         
-        # 获取今日实时数据
-        today_sql = """
-            SELECT trade_date, open, high, low, price as close, volume, amount
-            FROM realtime_quotes
-            WHERE ts_code = %s AND trade_date = CURDATE()
-        """
-        today_df = pd.read_sql(today_sql, conn, params=(ts_code,))
-        
-        # 合并数据
-        if not today_df.empty:
-            kline_df = kline_df.append(today_df.iloc[0], ignore_index=True)
+        # 转换为DataFrame并按日期正序排列
+        kline_df = pd.DataFrame(results)
+        if not kline_df.empty:
+            kline_df = kline_df.sort_values('trade_date')
+            kline_df = kline_df.reset_index(drop=True)
+            print(f"数据日期范围: {kline_df['trade_date'].iloc[0]} 至 {kline_df['trade_date'].iloc[-1]}")
+            print(f"最新收盘价: {kline_df['close'].iloc[-1]}")
+            
+            # 从内存中获取今日实时数据
+            today_quote = None
+            for quote in quotes_manager.quotes_data:
+                if quote['ts_code'] == ts_code:
+                    today_quote = quote
+                    print("\n今日实时数据详情:")
+                    print(f"股票代码: {quote['ts_code']}")
+                    print(f"股票名称: {quote.get('NAME', '-')}")
+                    print(f"开盘价: {quote.get('OPEN', '-')}")
+                    print(f"最高价: {quote.get('HIGH', '-')}")
+                    print(f"最低价: {quote.get('LOW', '-')}")
+                    print(f"当前价: {quote.get('PRICE', '-')}")
+                    print(f"成交量: {quote.get('VOLUME', '-')}")
+                    print(f"成交额: {quote.get('AMOUNT', '-')}")
+                    print(f"涨跌幅: {quote.get('CHANGE_PCT', '-')}%")
+                    break
+            
+            # 如果有实时数据，更新或添加到K线数据中
+            if today_quote:
+                today_date = datetime.now().strftime('%Y-%m-%d')
+                today_data = {
+                    'trade_date': today_date,
+                    'open': float(today_quote.get('OPEN', 0)),
+                    'high': float(today_quote.get('HIGH', 0)),
+                    'low': float(today_quote.get('LOW', 0)),
+                    'close': float(today_quote.get('PRICE', 0)),  # 当前价格作为收盘价
+                    'volume': float(today_quote.get('VOLUME', 0)),
+                    'amount': float(today_quote.get('AMOUNT', 0))
+                }
+                
+                # 如果最后一条记录是今天的数据，则更新它
+                if kline_df['trade_date'].iloc[-1] == today_date:
+                    print(f"更新今日({today_date})实时数据")
+                    kline_df.iloc[-1, kline_df.columns.get_loc('open')] = today_data['OPEN']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('high')] = today_data['HIGH']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('low')] = today_data['LOW']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('close')] = today_data['PRICE']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('volume')] = today_data['VOLUME']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('amount')] = today_data['AMOUNT']
+                else:
+                    print(f"添加今日({today_date})实时数据")
+                    today_df = pd.DataFrame([today_data])
+                    kline_df = pd.concat([kline_df, today_df], ignore_index=True)
+                
+                # 计算最新的均线
+                closes = kline_df['close'].astype(float).tolist()
+                
+                if len(closes) >= 5:
+                    kline_df.iloc[-1, kline_df.columns.get_loc('ma_5')] = sum(closes[-5:]) / 5
+                if len(closes) >= 10:
+                    kline_df.iloc[-1, kline_df.columns.get_loc('ma_10')] = sum(closes[-10:]) / 10
+                if len(closes) >= 20:
+                    ma20 = sum(closes[-20:]) / 20
+                    kline_df.iloc[-1, kline_df.columns.get_loc('ma_20')] = ma20
+                    # 计算BOLL
+                    std = np.std(closes[-20:])
+                    kline_df.iloc[-1, kline_df.columns.get_loc('boll_mid')] = ma20
+                    kline_df.iloc[-1, kline_df.columns.get_loc('boll_up')] = ma20 + 2 * std
+                    kline_df.iloc[-1, kline_df.columns.get_loc('boll_low')] = ma20 - 2 * std
+                if len(closes) >= 60:
+                    kline_df.iloc[-1, kline_df.columns.get_loc('ma_60')] = sum(closes[-60:]) / 60
+                
+                print(f"合并后数据范围: {kline_df['trade_date'].iloc[0]} 至 {kline_df['trade_date'].iloc[-1]}")
+        else:
+            print("未获取到K线数据")
         
         return jsonify(kline_df.to_dict('records'))
+        
+    except Exception as e:
+        print(f"获取K线数据失败: {str(e)}")
+        print(f"SQL语句: {kline_sql}")
+        print(f"股票代码: {stock_code}")
+        return jsonify([])
     finally:
+        cursor.close()
         conn.close()
 
 if __name__ == '__main__':

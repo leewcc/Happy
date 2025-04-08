@@ -111,7 +111,6 @@ def init_limit_prices():
                 'down_limit': float(row[2])
             }
                 
-        print(f"\n成功获取 {len(LIMIT_PRICE_MAP)} 只股票的涨跌停价格")
         return True
         
     except Exception as e:
@@ -192,11 +191,6 @@ def save_to_db(df):
     if df is None or df.empty:
         return
     
-    print("\n开始保存数据到数据库...")
-    print("数据预览:")
-    print(df.head())
-    print("\n数据列名:", df.columns.tolist())
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -209,12 +203,6 @@ def save_to_db(df):
                 # 当前日期和时间
                 current_date = datetime.now().strftime('%Y-%m-%d')
                 current_time = datetime.now().strftime('%H:%M:%S')
-                
-                # 打印每行数据的关键字段
-                print(f"\n处理第 {index + 1} 条数据:")
-                print(f"股票代码: {row.get('TS_CODE', 'N/A')}")
-                print(f"股票名称: {row.get('NAME', 'N/A')}")
-                print(f"当前价格: {row.get('PRICE', 'N/A')}")
                 
                 # 检查是否已有首次涨停时间记录
                 check_sql = """
@@ -260,10 +248,6 @@ def save_to_db(df):
                     row.get('AMOUNT'), is_up_limit, is_down_limit,
                     first_limit_up_time
                 )
-                
-                # 打印SQL参数
-                print("SQL参数:", params)
-                
                 cursor.execute(sql, params)
                 
             except Exception as row_error:
@@ -292,7 +276,6 @@ def get_stock_quotes(stock_list):
     try:
         df = ts.realtime_quote(stock_codes, src='sina')
         if df is not None and not df.empty:
-            print(f"成功获取{len(df)}只股票的实时行情")
             # 保存到数据库
             save_to_db(df)
             results.append(df)
@@ -539,7 +522,7 @@ class QuotesManager:
             return
             
         try:
-            log("开始更新指数行情...")
+            # log("开始更新指数行情...")
             success_count = 0
             
             for name, info in self.index_codes.items():
@@ -547,9 +530,9 @@ class QuotesManager:
                 if quote:
                     self.index_data[info['code']] = quote
                     success_count += 1
-                    log(f"{info['name']}: {quote['price']} ({quote['change_pct']}%)")
+                    # log(f"{info['name']}: {quote['price']} ({quote['change_pct']}%)")
             
-            log(f"指数行情更新完成，成功获取 {success_count}/{len(self.index_codes)} 个指数")
+            # log(f"指数行情更新完成，成功获取 {success_count}/{len(self.index_codes)} 个指数")
             
             # 更新成交额趋势
             current_time = datetime.now()
@@ -558,7 +541,7 @@ class QuotesManager:
                              for code in main_indices 
                              if code in self.index_data)
             
-            log(f"主要指数总成交额: {total_amount/100000000:.2f}亿")
+            # log(f"主要指数总成交额: {total_amount/100000000:.2f}亿")
             
             self.amount_trend.append({
                 'time': current_time.strftime('%H:%M:%S'),
@@ -580,7 +563,7 @@ class QuotesManager:
             return
             
         try:
-            log("开始更新个股行情...")
+            # log("开始更新个股行情...")
             split_stocks = split_list(STOCK_GROUPS, NUM_THREADS)
             all_quotes = []
             
@@ -588,7 +571,7 @@ class QuotesManager:
                 futures = []
                 for i, stock_group_list in enumerate(split_stocks):
                     flat_stocks = [stock for group in stock_group_list for stock in group]
-                    log(f"线程 {i+1} 开始处理 {len(flat_stocks)} 只股票")
+                    # log(f"线程 {i+1} 开始处理 {len(flat_stocks)} 只股票")
                     future = executor.submit(self._get_stock_quotes, flat_stocks)
                     futures.append(future)
                 
@@ -597,7 +580,7 @@ class QuotesManager:
                     if result:
                         all_quotes.extend(result)
             
-            log(f"个股行情更新完成，成功获取 {len(all_quotes)} 只股票")
+            # log(f"个股行情更新完成，成功获取 {len(all_quotes)} 只股票")
             self.quotes_data = all_quotes
             
             # 更新市场统计
@@ -610,7 +593,7 @@ class QuotesManager:
         """获取单个指数行情"""
         try:
             # 不需要转换代码格式，直接使用正确的代码
-            log(f"获取指数 {code} 行情...")
+            # log(f"获取指数 {code} 行情...")
             
             df = ts.realtime_quote(code)
             if df is not None and not df.empty:
@@ -633,7 +616,7 @@ class QuotesManager:
                         'high': float(df['HIGH'].iloc[0]),
                         'low': float(df['LOW'].iloc[0])
                     }
-                    log(f"指数 {code} 获取成功: {price} ({change_pct:+.2f}%)")
+                    # log(f"指数 {code} 获取成功: {price} ({change_pct:+.2f}%)")
                     return quote
                 except Exception as e:
                     log(f"处理指数 {code} 数据失败: {str(e)}")
@@ -682,7 +665,7 @@ class QuotesManager:
         """获取单个线程中的股票实时行情"""
         try:
             stock_codes = ','.join(stock_list)
-            log(f"正在获取 {len(stock_list)} 只股票的行情...")
+            # log(f"正在获取 {len(stock_list)} 只股票的行情...")
             
             df = ts.realtime_quote(stock_codes)
             if df is not None and not df.empty:
@@ -719,7 +702,6 @@ class QuotesManager:
                         
                         if is_up_limit or is_down_limit:
                             status = "涨停" if is_up_limit else "跌停"
-                            log(f"{quote['name']}({quote['ts_code']}) {status} 价格:{quote['price']}")
                             
                     except Exception as e:
                         error_count += 1
@@ -727,7 +709,7 @@ class QuotesManager:
                         log(f"错误详情: {str(e)}")
                         log(f"原始数据: {row.to_dict()}")
                 
-                log(f"股票行情获取完成 - 成功: {success_count}, 失败: {error_count}")
+                # log(f"股票行情获取完成 - 成功: {success_count}, 失败: {error_count}")
                 return quotes
             else:
                 log("获取股票行情返回空数据")
