@@ -107,7 +107,7 @@ def insert_stock_concept(stock_code, concept_code, concept_name, stock_name):
     try:
         # 插入数据
         insert_sql = """
-        INSERT INTO concept_stock 
+        INSERT IGNORE INTO concept_stock 
         (sector_code, sector_name, stock_code, stokc_name, is_new) 
         VALUES (%s, %s, %s, %s, 'Y')
         """

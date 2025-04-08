@@ -121,7 +121,7 @@ def insert_limit_stocks(data, trade_date):
     将涨跌停数据插入数据库
     """
     insert_sql = """
-    INSERT INTO limit_stocks (
+    INSERT IGNORE INTO limit_stocks (
         trade_date, ts_code, industry, concept, market_type, name, 
         close, pct_chg, amount, limit_amount, float_mv, total_mv, 
         turnover_ratio, fd_amount, first_time, last_time, 
@@ -203,7 +203,7 @@ def calculate_limit_stats(data, trade_date):
         
         # 插入统计数据
         insert_sql = """
-        INSERT INTO limit_stats (trade_date, item, count)
+        INSERT IGNORE INTO limit_stats (trade_date, item, count)
         VALUES (%s, %s, %s)
         ON DUPLICATE KEY UPDATE count = VALUES(count)
         """
@@ -253,7 +253,7 @@ def main(trade_date=None):
         
     # 处理概念数据
     print("\n=== 开始处理概念数据 ===")
-    process_concepts(trade_date)
+    # process_concepts(trade_date)
 
 if __name__ == "__main__":
     # 可以传入指定日期，格式为'YYYYMMDD'
