@@ -13,6 +13,10 @@ class KlineChart {
                     <div class="side-close-btn" title="关闭">×</div>
                     <div class="side-panel-header">
                         <h4 class="stock-name"></h4>
+                        <div class="stock-info">
+                            <span class="industry"></span>
+                            <div class="concepts"></div>
+                        </div>
                     </div>
                     <div id="kline-container"></div>
                 </div>
@@ -33,8 +37,19 @@ class KlineChart {
         }
 
         try {
-            const data = await $.get(`/api/stock_kline/${tsCode}`);
-            this.renderChart(data);
+            const response = await $.get(`/api/stock_kline/${tsCode}`);
+            // 显示行业信息
+            $('#side-panel .industry').text(`【${response.industry}】`);
+            
+            // 显示概念信息
+            const conceptsHtml = response.concepts
+                .filter(concept => concept !== '-')  // 过滤掉 '-' 
+                .map(concept => `<span class="concept-tag">${concept}</span>`)
+                .join('');
+            $('#side-panel .concepts').html(conceptsHtml);
+            
+            // 渲染K线图
+            this.renderChart(response.kline);
         } catch (error) {
             console.error('Failed to load kline data:', error);
         }

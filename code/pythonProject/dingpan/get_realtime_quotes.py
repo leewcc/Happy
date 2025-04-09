@@ -190,6 +190,9 @@ def save_to_db(df):
     """保存数据到MySQL"""
     if df is None or df.empty:
         return
+        
+    if not is_trade_time():
+        return
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -316,7 +319,6 @@ def fetch_all_quotes():
 
 def is_trade_time():
     """判断当前是否为交易时间"""
-    return True
     now = datetime.now()
     current_time = now.time()
     
@@ -324,8 +326,8 @@ def is_trade_time():
     if now.weekday() >= 5:  # 周六日不执行
         return False
     
-    # 上午交易时间 9:30-11:30
-    morning_start = datetime.strptime('09:30:00', '%H:%M:%S').time()
+    # 早盘准备时间 9:25-11:30
+    morning_start = datetime.strptime('09:25:00', '%H:%M:%S').time()
     morning_end = datetime.strptime('11:30:00', '%H:%M:%S').time()
     
     # 下午交易时间 13:00-15:00
@@ -337,8 +339,7 @@ def is_trade_time():
 
 def run_schedule():
     """运行定时任务"""
-    if is_trade_time():
-        fetch_all_quotes()
+    fetch_all_quotes()
 
 def main():
     # 初始化涨跌停价格映射
