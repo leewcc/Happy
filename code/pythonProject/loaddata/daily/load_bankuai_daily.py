@@ -128,6 +128,7 @@ industry_index_df = pd.DataFrame(industry_index_rows, columns=['ts_code', 'name'
 
 # 指定日期
 target_date = '20250321'  # 你可以修改这个日期
+target_date = '20250409'  # 你可以修改这个日期
 # 计算近 120 天的开始日期
 target_datetime = datetime.strptime(target_date, '%Y%m%d')
 start_date = (target_datetime - timedelta(days=120)).strftime('%Y%m%d')

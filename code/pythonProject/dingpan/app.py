@@ -155,6 +155,7 @@ def stock_kline(ts_code):
             # 从内存中获取今日实时数据
             today_quote = None
             for quote in quotes_manager.quotes_data:
+                print(f"quote: {quote}")
                 if quote['ts_code'] == ts_code:
                     today_quote = quote
                     print("\n今日实时数据详情:")
@@ -171,26 +172,27 @@ def stock_kline(ts_code):
             
             # 如果有实时数据，更新或添加到K线数据中
             if today_quote:
+                print(f"today_quote: {today_quote}")
                 today_date = datetime.now().strftime('%Y-%m-%d')
                 today_data = {
                     'trade_date': today_date,
-                    'open': float(today_quote.get('OPEN', 0)),
-                    'high': float(today_quote.get('HIGH', 0)),
-                    'low': float(today_quote.get('LOW', 0)),
-                    'close': float(today_quote.get('PRICE', 0)),  # 当前价格作为收盘价
-                    'volume': float(today_quote.get('VOLUME', 0)),
-                    'amount': float(today_quote.get('AMOUNT', 0))
+                    'open': float(today_quote['open']),
+                    'high': float(today_quote['high']),  
+                    'low': float(today_quote['low']),   
+                    'close': float(today_quote['price']),
+                    'volume': float(today_quote['amount']/today_quote['price']),  # 用成交额除以价格估算成交量
+                    'amount': float(today_quote['amount'])
                 }
                 
                 # 如果最后一条记录是今天的数据，则更新它
                 if kline_df['trade_date'].iloc[-1] == today_date:
                     print(f"更新今日({today_date})实时数据")
-                    kline_df.iloc[-1, kline_df.columns.get_loc('open')] = today_data['OPEN']
-                    kline_df.iloc[-1, kline_df.columns.get_loc('high')] = today_data['HIGH']
-                    kline_df.iloc[-1, kline_df.columns.get_loc('low')] = today_data['LOW']
-                    kline_df.iloc[-1, kline_df.columns.get_loc('close')] = today_data['PRICE']
-                    kline_df.iloc[-1, kline_df.columns.get_loc('volume')] = today_data['VOLUME']
-                    kline_df.iloc[-1, kline_df.columns.get_loc('amount')] = today_data['AMOUNT']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('open')] = today_data['open']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('high')] = today_data['high']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('low')] = today_data['low']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('close')] = today_data['close']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('volume')] = today_data['volume']
+                    kline_df.iloc[-1, kline_df.columns.get_loc('amount')] = today_data['amount']
                 else:
                     print(f"添加今日({today_date})实时数据")
                     today_df = pd.DataFrame([today_data])

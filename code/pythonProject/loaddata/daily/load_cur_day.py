@@ -331,7 +331,7 @@ def update_turnover_avg(daily_data, specified_date, conn):
 if __name__ == "__main__":
     try:
         # 指定日期，格式为 'YYYYMMDD'
-        specified_date = '20250408'
+        specified_date = '20250409'
         specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
         sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

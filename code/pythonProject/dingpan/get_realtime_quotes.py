@@ -695,7 +695,10 @@ class QuotesManager:
                             'is_up_limit': is_up_limit,
                             'is_down_limit': is_down_limit,
                             'industry': stock_info['industry'],
-                            'concepts': stock_info['concepts']
+                            'concepts': stock_info['concepts'],
+                            'open': float(df['OPEN'].iloc[0]),
+                            'high': float(df['HIGH'].iloc[0]),
+                            'low': float(df['LOW'].iloc[0])
                         }
                         quotes.append(quote)
                         success_count += 1
