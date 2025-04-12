@@ -1,21 +1,8 @@
 // 初始化涨停分析页面
 function initLimitAnalysis() {
-    // 创建概念统计表格
-    const conceptStatsTable = new Tabulator("#concept-stats-table", {
-        height: "400px",
-        layout: "fitColumns",
-        columns: [
-            {title: "概念", field: "concept", sorter: "string"},
-            {title: "涨停数", field: "limit_up_count", sorter: "number", visible: true},
-            {title: "连板数", field: "continuous_count", sorter: "number", visible: false},
-            {title: "炸板数", field: "broken_count", sorter: "number", visible: false},
-            {title: "跌停数", field: "limit_down_count", sorter: "number", visible: false}
-        ]
-    });
-
     // 创建涨停股票表格
     const limitStocksTable = new Tabulator("#limit-stocks-table", {
-        height: "400px",
+        height: "100%",  // 改为100%以充满容器
         layout: "fitColumns",
         columns: [
             {title: "股票名称", field: "name", sorter: "string"},
@@ -26,6 +13,90 @@ function initLimitAnalysis() {
             {title: "行业", field: "industry", sorter: "string"},
             {title: "概念", field: "concepts", sorter: "string", formatter: "textarea"}
         ]
+    });
+
+    // 创建概念统计表格
+    const conceptStatsTable = new Tabulator("#concept-stats-table", {
+        height: "auto",
+        layout: "fitData",
+        columns: [
+            {
+                title: "概念", 
+                field: "concept", 
+                sorter: "string", 
+                width: 140,
+                headerSort: true,
+                headerSortStartingDir: "desc"
+            },
+            {
+                title: "涨停", 
+                field: "limit_up_count", 
+                sorter: "number", 
+                width: 65,
+                hozAlign: "center",
+                headerSort: true,
+                headerSortStartingDir: "desc"
+            },
+            {
+                title: "连板", 
+                field: "continuous_count", 
+                sorter: "number", 
+                width: 65,
+                hozAlign: "center",
+                headerSort: true,
+                headerSortStartingDir: "desc"
+            },
+            {
+                title: "创业", 
+                field: "gem_limit_up_count", 
+                sorter: "number", 
+                width: 65,
+                hozAlign: "center",
+                headerSort: true,
+                headerSortStartingDir: "desc"
+            },
+            {
+                title: "炸板", 
+                field: "broken_count", 
+                sorter: "number", 
+                width: 65,
+                hozAlign: "center",
+                headerSort: true,
+                headerSortStartingDir: "desc"
+            },
+            {
+                title: "跌停", 
+                field: "limit_down_count", 
+                sorter: "number", 
+                width: 65,
+                hozAlign: "center",
+                headerSort: true,
+                headerSortStartingDir: "desc"
+            }
+        ],
+        initialSort: [
+            {column: "limit_up_count", dir: "desc"}
+        ],
+        rowHeight: 24,
+        headerHeight: 24
+    });
+
+    // 处理侧边栏显示/隐藏
+    function toggleConceptStats() {
+        $('#concept-stats-sidebar').toggleClass('show');
+    }
+
+    // 按钮点击事件
+    $('#toggle-concept-stats').click(toggleConceptStats);
+    $('#close-concept-stats').click(toggleConceptStats);
+
+    // 添加快捷键支持
+    $(document).keydown(function(e) {
+        // Alt + D
+        if (e.altKey && e.keyCode === 68) {
+            e.preventDefault(); // 阻止默认行为
+            toggleConceptStats();
+        }
     });
 
     // 处理概念统计显示切换
@@ -126,6 +197,43 @@ function addChangeIndicator(elementId, currentValue, lastValue) {
         </div>`;
         element.after(changeHtml);
     }
+}
+
+// 显示概念详细信息
+function showConceptDetail(conceptData) {
+    const modal = new bootstrap.Modal(document.getElementById('concept-detail-modal'));
+    
+    // 更新弹窗标题
+    document.querySelector('#concept-detail-modal .modal-title').textContent = 
+        `${conceptData.concept} - 详细信息`;
+    
+    // 更新涨停股票列表
+    const limitUpsHtml = conceptData.limit_ups.map(stock => 
+        `<span class="stock-tag limit-up">${stock.name}</span>`
+    ).join('');
+    document.getElementById('concept-limit-ups').innerHTML = limitUpsHtml;
+    
+    // 更新连板股票列表
+    const continuousHtml = conceptData.limit_ups
+        .filter(stock => stock.continuous_days > 1)
+        .map(stock => 
+            `<span class="stock-tag continuous">${stock.name} (${stock.continuous_days}板)</span>`
+        ).join('');
+    document.getElementById('concept-continuous').innerHTML = continuousHtml;
+    
+    // 更新炸板股票列表
+    const brokenHtml = conceptData.broken_limits.map(stock => 
+        `<span class="stock-tag broken">${stock.name}</span>`
+    ).join('');
+    document.getElementById('concept-broken').innerHTML = brokenHtml;
+    
+    // 更新跌停股票列表
+    const limitDownsHtml = conceptData.limit_downs.map(stock => 
+        `<span class="stock-tag limit-down">${stock.name}</span>`
+    ).join('');
+    document.getElementById('concept-limit-downs').innerHTML = limitDownsHtml;
+    
+    modal.show();
 }
 
 // 页面加载完成后初始化

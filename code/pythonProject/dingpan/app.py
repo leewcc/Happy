@@ -112,12 +112,17 @@ def limit_up_analysis():
         # 获取概念统计
         concept_summary = []
         for concept, stats in concept_stats.items():
+            # 计算创业板涨停数
+            gem_limit_ups = [s for s in stats['limit_ups'] 
+                             if s['ts_code'].startswith(('300', '301', '688'))]
+            
             concept_summary.append({
                 'concept': concept,
                 'limit_up_count': stats['limit_up_count'],
                 'continuous_count': len([s for s in stats['limit_ups'] 
-                                      if s['ts_code'] in market_stats.get('limit_ups', {}) 
-                                      and market_stats['limit_ups'][s['ts_code']]['is_continuous']]),
+                                       if s['ts_code'] in market_stats.get('limit_ups', {}) 
+                                       and market_stats['limit_ups'][s['ts_code']]['is_continuous']]),
+                'gem_limit_up_count': len(gem_limit_ups),
                 'broken_count': stats['broken_limit_count'],
                 'limit_down_count': stats['limit_down_count']
             })

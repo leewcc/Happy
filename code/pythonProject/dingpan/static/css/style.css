@@ -261,4 +261,163 @@
 
 .stat-change.decrease {
     color: #0c0;
+}
+
+/* 概念统计表格样式 */
+.concept-detail-btn {
+    cursor: pointer;
+    color: #0d6efd;
+}
+
+.concept-detail-content {
+    padding: 10px;
+}
+
+.detail-row {
+    margin-bottom: 15px;
+}
+
+.detail-label {
+    font-weight: bold;
+    color: #666;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.detail-value {
+    padding: 5px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    min-height: 30px;
+}
+
+.stock-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px;
+    background: #e9ecef;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.stock-tag.limit-up {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.stock-tag.continuous {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.stock-tag.broken {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.stock-tag.limit-down {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    position: fixed;
+    top: 60px;
+    right: -500px;  /* 调整为实际需要的宽度 */
+    width: 500px;   /* 根据表格总宽度(约465px)加上一些边距 */
+    height: calc(100vh - 60px);
+    background: #fff;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+    transition: right 0.3s ease;
+    z-index: 1040;
+    padding: 10px;
+}
+
+.sidebar.show {
+    right: 0;
+}
+
+.sidebar-header {
+    padding: 0 0 10px 0;  /* 减小头部边距 */
+    margin-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-content {
+    padding: 0;  /* 移除内容区域边距 */
+    height: calc(100% - 50px);  /* 减去头部高度 */
+    overflow: auto;  /* 内容过多时可滚动 */
+}
+
+/* 调整主内容区域 */
+.card-body.position-relative {
+    min-height: calc(100vh - 280px);
+}
+
+/* 调整表格样式 */
+#limit-stocks-table {
+    height: 100%;
+}
+
+/* 按钮样式 */
+.btn-outline-primary {
+    border-color: #dee2e6;
+}
+
+.btn-outline-primary:hover {
+    background-color: #f8f9fa;
+    border-color: #0d6efd;
+}
+
+/* 调整表格样式 */
+#concept-stats-table {
+    width: 100%;
+    height: auto !important;
+}
+
+/* 调整 Tabulator 表格样式 */
+.tabulator {
+    font-size: 12px !important;  /* 进一步减小字体大小 */
+    max-width: 100%;
+}
+
+.tabulator .tabulator-header .tabulator-col {
+    padding: 3px 6px !important;  /* 减小表头padding */
+    background: #f8f9fa;
+}
+
+.tabulator .tabulator-tableHolder .tabulator-table .tabulator-row {
+    padding: 2px 0 !important;  /* 减小行间距 */
+}
+
+.tabulator .tabulator-tableHolder .tabulator-table .tabulator-row .tabulator-cell {
+    padding: 3px 6px !important;  /* 减小单元格padding */
+    height: 24px !important;  /* 减小单元格高度 */
+}
+
+/* 防止表格出现多余的空列 */
+.tabulator .tabulator-tableHolder {
+    overflow-x: hidden !important;
+}
+
+/* 侧边栏样式补充 */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.shortcut-tip {
+    font-size: 12px;
+    color: #666;
+    margin-right: 10px;
+}
+
+/* 按钮悬停效果 */
+.btn-close:hover {
+    background-color: #e9ecef;
 } 

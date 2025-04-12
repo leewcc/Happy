@@ -172,69 +172,57 @@
                 </div>
             </div>
 
-            <!-- 概念统计和涨停股票列表 -->
+            <!-- 主要内容区域 -->
             <div class="row">
-                <!-- 左侧概念统计 -->
-                <div class="col-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">概念统计</h5>
-                                <div class="form-check form-check-inline">
-                                    <input type="checkbox" class="form-check-input" id="show-limit-up" checked>
-                                    <label class="form-check-label" for="show-limit-up">涨停数</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input type="checkbox" class="form-check-input" id="show-continuous">
-                                    <label class="form-check-label" for="show-continuous">连板数</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input type="checkbox" class="form-check-input" id="show-broken">
-                                    <label class="form-check-label" for="show-broken">炸板数</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input type="checkbox" class="form-check-input" id="show-limit-down">
-                                    <label class="form-check-label" for="show-limit-down">跌停数</label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div id="concept-stats-table"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 右侧涨停股票列表 -->
-                <div class="col-6">
+                <div class="col-12">
                     <div class="card">
                         <div class="card-header">
                             <div class="d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0">涨停股票</h5>
-                                <div class="stock-type-filter">
-                                    <div class="form-check form-check-inline">
-                                        <input type="checkbox" class="form-check-input" id="filter-limit-up" checked>
-                                        <label class="form-check-label" for="filter-limit-up">涨停</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input type="checkbox" class="form-check-input" id="filter-broken">
-                                        <label class="form-check-label" for="filter-broken">炸板</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input type="checkbox" class="form-check-input" id="filter-continuous">
-                                        <label class="form-check-label" for="filter-continuous">连板</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input type="checkbox" class="form-check-input" id="filter-limit-down">
-                                        <label class="form-check-label" for="filter-limit-down">跌停</label>
+                                <div>
+                                    <button class="btn btn-outline-primary btn-sm me-2" id="toggle-concept-stats">
+                                        <i class="fas fa-chart-bar"></i> 概念统计
+                                    </button>
+                                    <div class="stock-type-filter d-inline-block">
+                                        <div class="form-check form-check-inline">
+                                            <input type="checkbox" class="form-check-input" id="filter-limit-up" checked>
+                                            <label class="form-check-label" for="filter-limit-up">涨停</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input type="checkbox" class="form-check-input" id="filter-broken">
+                                            <label class="form-check-label" for="filter-broken">炸板</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input type="checkbox" class="form-check-input" id="filter-continuous">
+                                            <label class="form-check-label" for="filter-continuous">连板</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input type="checkbox" class="form-check-input" id="filter-limit-down">
+                                            <label class="form-check-label" for="filter-limit-down">跌停</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body position-relative">
                             <div id="limit-stocks-table"></div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 概念统计侧边栏 -->
+        <div id="concept-stats-sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h5 class="mb-0">概念统计</h5>
+                <div>
+                    <span class="shortcut-tip">(Alt+D)</span>
+                    <button type="button" class="btn-close" id="close-concept-stats"></button>
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <div id="concept-stats-table"></div>
             </div>
         </div>
 
@@ -258,6 +246,38 @@
                 </div>
                 <div class="modal-body">
                     <div id="kline-chart" style="height: 600px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加详细信息弹出框 -->
+    <div class="modal fade" id="concept-detail-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">概念详细信息</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="concept-detail-content">
+                        <div class="detail-row">
+                            <span class="detail-label">涨停股票：</span>
+                            <div id="concept-limit-ups" class="detail-value"></div>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">连板股票：</span>
+                            <div id="concept-continuous" class="detail-value"></div>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">炸板股票：</span>
+                            <div id="concept-broken" class="detail-value"></div>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">跌停股票：</span>
+                            <div id="concept-limit-downs" class="detail-value"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
