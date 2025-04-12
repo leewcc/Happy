@@ -80,7 +80,7 @@ $(document).ready(function() {
         const activeTab = $('.nav-link.active').data('tab');
         console.log('定时刷新当前页面:', activeTab);
         loadData(activeTab);
-    }, 60000);  // 每分钟刷新一次
+    }, 10000);  // 每分钟刷新一次
 
     console.log('页面初始化完成');
 });
@@ -131,11 +131,31 @@ function loadData(tab) {
 }
 
 function loadMarketOverview() {
+    // console.log('开始加载市场概览数据');
     $.get('/api/market_overview', function(data) {
-        updateIndexOverview(data.indices);
-        updateMarketStats(data.statistics);
-        updateAmountTrend(data.amount_trend);
-        updateDistributionChart(data.statistics);
+        // console.log('收到市场概览数据:', data);
+        if (data.indices) {
+            console.log('指数数据:', data.indices);
+            updateIndexOverview(data.indices);
+        } else {
+            console.warn('未收到指数数据');
+        }
+        
+        if (data.statistics) {
+            // console.log('市场统计数据:', data.statistics);
+            updateMarketStats(data.statistics);
+        }
+        
+        if (data.amount_trend) {
+            // console.log('成交额趋势数据:', data.amount_trend);
+            updateAmountTrend(data.amount_trend);
+        }
+        
+        if (data.statistics) {
+            updateDistributionChart(data.statistics);
+        }
+    }).fail(function(error) {
+        console.error('加载市场概览数据失败:', error);
     });
 }
 
@@ -167,6 +187,7 @@ function loadLimitUpAnalysis() {
 
 // 更新指数行情
 function updateIndexOverview(indices) {
+    console.log('开始更新指数行情');
     indices.forEach(index => {
         // 根据完整的指数代码进行匹配
         const id = index.ts_code === '000001.SH' ? 'sh' :
@@ -175,21 +196,37 @@ function updateIndexOverview(indices) {
                   index.ts_code === '000688.SH' ? 'kc' :
                   index.ts_code === '899050.BJ' ? 'bj' : null;
         
+        console.log('处理指数:', index.ts_code, '映射ID:', id);
+        
         if (id) {
             const price = parseFloat(index.price).toFixed(2);
             const changePct = parseFloat(index.change_pct).toFixed(2);
             const colorClass = index.change >= 0 ? 'up-color' : 'down-color';
             
+            console.log(`更新${id}指数:`, {
+                price: price,
+                changePct: changePct,
+                colorClass: colorClass
+            });
+            
             const container = $(`#${id}-index`);
-            container.find('.index-price').text(price).addClass(colorClass);
-            container.find('.index-change')
-                    .text(`${changePct}%`)  // 只显示涨跌幅
-                    .addClass(colorClass);
+            if (container.length) {
+                container.find('.index-price').text(price).addClass(colorClass);
+                container.find('.index-change')
+                        .text(`${changePct}%`)
+                        .addClass(colorClass);
 
-            // 移除旧的颜色类
-            container.find('.index-price, .index-change')
-                    .removeClass('up-color down-color')
-                    .addClass(colorClass);
+                // 移除旧的颜色类
+                container.find('.index-price, .index-change')
+                        .removeClass('up-color down-color')
+                        .addClass(colorClass);
+                        
+                console.log(`${id}指数更新成功`);
+            } else {
+                console.warn(`未找到${id}指数容器元素`);
+            }
+        } else {
+            console.warn('未知的指数代码:', index.ts_code);
         }
     });
 }

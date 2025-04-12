@@ -3,7 +3,9 @@ function initLimitAnalysis() {
     // 创建涨停股票表格
     const limitStocksTable = new Tabulator("#limit-stocks-table", {
         height: "100%",  // 改为100%以充满容器
-        layout: "fitColumns",
+        layout: "fitColumns",  // 使用列自适应布局
+        responsiveLayout: "hide",
+        tooltips: true,
         footerElement: "<div class='tabulator-footer-records'>共 <span id='total-records'>0</span> 条记录</div>",
         dataFiltered: function(filters, rows) {
             console.log('过滤后的记录数:', rows.length);  // 添加调试日志
@@ -14,14 +16,74 @@ function initLimitAnalysis() {
             document.getElementById('total-records').textContent = data.length;
         },
         columns: [
-            {title: "股票名称", field: "name", sorter: "string"},
-            {title: "涨幅", field: "change_pct", sorter: "number", formatter: "number", formatterParams: {precision: 2}},
-            {title: "连板数", field: "continuous_days", sorter: "number"},
-            {title: "首次涨停", field: "first_limit_time", sorter: "string"},
-            {title: "成交额(亿)", field: "amount", sorter: "number", formatter: "number", formatterParams: {precision: 2}},
-            {title: "行业", field: "industry", sorter: "string"},
-            {title: "概念", field: "concepts", sorter: "string", formatter: "textarea"}
-        ]
+            {
+                title: "股票名称", 
+                field: "name", 
+                width: 100,
+                sorter: "string"
+            },
+            {
+                title: "涨幅", 
+                field: "change_pct", 
+                width: 80,
+                sorter: "number",
+                formatter: function(cell) {
+                    const value = cell.getValue();
+                    const color = value >= 0 ? 'up-color' : 'down-color';
+                    return `<span class="${color}">${value.toFixed(2)}%</span>`;
+                }
+            },
+            {
+                title: "连板数", 
+                field: "continuous_days", 
+                width: 80,
+                sorter: "number",
+                formatter: function(cell) {
+                    const value = cell.getValue();
+                    return value > 1 ? `<span class="continuous-days">${value}板</span>` : '-';
+                }
+            },
+            {
+                title: "首次涨停", 
+                field: "first_limit_time", 
+                width: 100,
+                sorter: "string"
+            },
+            {
+                title: "成交额(亿)", 
+                field: "amount", 
+                width: 100,
+                sorter: "number",
+                formatter: function(cell) {
+                    return (cell.getValue() / 100000000).toFixed(2);
+                }
+            },
+            {
+                title: "行业", 
+                field: "industry", 
+                width: 120,
+                sorter: "string"
+            },
+            {
+                title: "概念", 
+                field: "concepts", 
+                sorter: "string",
+                formatter: function(cell) {
+                    const concepts = cell.getValue().split(',');
+                    return concepts.map(concept => 
+                        `<span class="concept-tag">${concept.trim()}</span>`
+                    ).join(' ');
+                },
+                width: "auto",  // 自动占用剩余宽度
+                responsive: 0,  // 永不隐藏
+                cssClass: "wrap-text"  // 添加自定义CSS类
+            }
+        ],
+        rowClick: function(e, row) {
+            const tsCode = row.getData().ts_code;
+            const name = row.getData().name;
+            window.klineChart.show(tsCode, name);
+        }
     });
 
     // 创建概念统计表格
@@ -212,7 +274,7 @@ function initLimitAnalysis() {
     updateLimitAnalysis();
 
     // 设置定时刷新
-    setInterval(updateLimitAnalysis, 10000);
+    // setInterval(updateLimitAnalysis, 10000);
 
     // 在表格初始化后调用
     initStockFilter();
@@ -300,4 +362,59 @@ function showConceptDetail(conceptData) {
 // 页面加载完成后初始化
 $(document).ready(function() {
     initLimitAnalysis();
-}); 
+});
+
+// 添加一些CSS样式
+const style = document.createElement('style');
+style.textContent = `
+    #limit-stocks-table {
+        height: 100% !important;
+    }
+    .card-body {
+        height: 100%;
+        padding: 0;
+    }
+    .tabulator {
+        height: 100% !important;
+        max-height: none !important;
+    }
+    .tabulator-row {
+        cursor: pointer;
+    }
+    .tabulator-row:hover {
+        background-color: #f5f5f5 !important;
+    }
+    .up-color {
+        color: #f55;
+    }
+    .down-color {
+        color: #0c0;
+    }
+    .continuous-days {
+        color: #f55;
+        font-weight: bold;
+    }
+    .concept-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        margin: 2px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: normal;  /* 允许换行 */
+    }
+    .wrap-text {
+        white-space: normal !important;  /* 强制允许换行 */
+        min-width: 200px;  /* 设置最小宽度 */
+    }
+    .tabulator-cell {
+        height: auto !important;  /* 允许单元格高度自适应 */
+        padding: 8px !important;  /* 增加一些内边距 */
+    }
+    .tabulator-footer-records {
+        padding: 10px;
+        text-align: right;
+        color: #666;
+    }
+`;
+document.head.appendChild(style); 

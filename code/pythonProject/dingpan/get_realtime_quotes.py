@@ -387,6 +387,10 @@ class QuotesManager:
         self.thread = None
         self.index_thread = None
         
+        # 分开管理个股和指数的非交易时间更新标志位
+        self.stock_non_trade_time_updated = False
+        self.index_non_trade_time_updated = False
+        
         # 缓存股票的行业和概念数据
         self.stock_info_cache = {}
         
@@ -423,8 +427,6 @@ class QuotesManager:
         
         # 初始化上一个交易日涨停股票和统计数据
         self._init_last_trade_date_data()
-        
-        self.non_trade_time_updated = False
         
         log("QuotesManager 初始化完成")
 
@@ -552,13 +554,13 @@ class QuotesManager:
             # 检查是否为交易时间
             if not is_trade_time():
                 # 非交易时间且已更新过,则跳过
-                if self.non_trade_time_updated:
+                if self.index_non_trade_time_updated:
                     return
                 # 非交易时间首次更新,设置标志位
-                self.non_trade_time_updated = True
+                self.index_non_trade_time_updated = True
             else:
                 # 交易时间重置标志位
-                self.non_trade_time_updated = False
+                self.index_non_trade_time_updated = False
             
             success_count = 0
             
@@ -568,14 +570,14 @@ class QuotesManager:
                     self.index_data[info['code']] = quote
                     success_count += 1
             
+            log(f"成功获取 {success_count} 个指数行情")
+            
             # 更新成交额趋势
             current_time = datetime.now()
             main_indices = ['000001.SH', '399001.SZ', '399006.SZ']
             total_amount = sum(self.index_data[code]['amount'] 
                              for code in main_indices 
                              if code in self.index_data)
-            
-            # log(f"主要指数总成交额: {total_amount/100000000:.2f}亿")
             
             self.amount_trend.append({
                 'time': current_time.strftime('%H:%M:%S'),
@@ -597,13 +599,13 @@ class QuotesManager:
             # 检查是否为交易时间
             if not is_trade_time():
                 # 非交易时间且已更新过,则跳过
-                if self.non_trade_time_updated:
+                if self.stock_non_trade_time_updated:
                     return
                 # 非交易时间首次更新,设置标志位
-                self.non_trade_time_updated = True
+                self.stock_non_trade_time_updated = True
             else:
                 # 交易时间重置标志位
-                self.non_trade_time_updated = False
+                self.stock_non_trade_time_updated = False
             
             split_stocks = split_list(STOCK_GROUPS, NUM_THREADS)
             all_quotes = []
@@ -632,6 +634,7 @@ class QuotesManager:
         """获取单个指数行情"""
         try:
             df = ts.realtime_quote(code)
+            log(f"处理指数 {df} 数据")
             if df is not None and not df.empty:
                 try:
                     price = float(df['PRICE'].iloc[0])
