@@ -1,16 +1,39 @@
 $(document).ready(function() {
-    // 页面切换
+    // 从 localStorage 获取上次访问的页面
+    const lastTab = localStorage.getItem('currentTab') || 'rank';
+    
+    // 激活对应的导航项
+    $(`.nav-link[data-tab="${lastTab}"]`).addClass('active');
+    
+    // 显示对应的页面内容
+    $('.page-content').hide();
+    $(`#${lastTab}-page`).show();
+    
+    // 如果是涨停分析页面，初始化数据
+    if(lastTab === 'limit') {
+        initLimitAnalysis();
+    }
+    
+    // 页面切换处理
     $('.nav-link').click(function(e) {
         e.preventDefault();
+        const tabId = $(this).data('tab');
+        
+        // 保存当前页面到 localStorage
+        localStorage.setItem('currentTab', tabId);
+        
+        // 切换导航激活状态
         $('.nav-link').removeClass('active');
         $(this).addClass('active');
         
-        const tab = $(this).data('tab');
+        // 切换页面内容
         $('.page-content').hide();
-        $(`#${tab}-page`).show();
+        $(`#${tabId}-page`).show();
         
-        // 重新加载数据
-        loadData(tab);
+        // 如果切换到涨停分析页面，初始化数据
+        if(tabId === 'limit') {
+            initLimitAnalysis();
+        }
     });
 
     // 定时刷新数据
@@ -20,7 +43,7 @@ $(document).ready(function() {
     }, 60000);  // 每分钟刷新一次
 
     // 初始加载
-    loadData('rank');
+    loadData(lastTab);
 });
 
 function loadData(tab) {
@@ -30,7 +53,11 @@ function loadData(tab) {
             loadStockList();
             break;
         case 'limit':
-            loadLimitUpAnalysis();
+            if(typeof initLimitAnalysis === 'function') {
+                initLimitAnalysis();
+            } else {
+                console.error('initLimitAnalysis function not found');
+            }
             break;
         case 'sector':
             loadSectorMap();

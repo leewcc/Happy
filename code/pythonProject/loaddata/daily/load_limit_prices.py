@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # 可以通过命令行参数传入日期，这里演示几种用法
     
     # 获取单个日期的数据
-    load_limit_prices('20250410')
+    load_limit_prices('20250411')
     
     # 获取日期范围的数据
     # load_limit_prices_by_date_range('20240401', '20240403') 

@@ -81,38 +81,66 @@ def get_stock_list():
 @app.route('/api/limit_up_analysis')
 def limit_up_analysis():
     """获取涨停分析数据"""
-    conn = get_db_connection()
+    global quotes_manager
+    if not quotes_manager:
+        print("行情管理器未初始化")
+        return jsonify({'error': 'Quotes manager not initialized'})
+
     try:
-        # 获取涨停统计
-        stats_sql = """
-            SELECT 
-                COUNT(*) as total_limit_up,
-                SUM(CASE WHEN ts_code LIKE '300%' OR ts_code LIKE '688%' THEN 1 ELSE 0 END) as gem_limit_up,
-                COUNT(DISTINCT CASE WHEN first_limit_up_time IS NOT NULL THEN ts_code END) as new_limit_up
-            FROM realtime_quotes
-            WHERE trade_date = CURDATE() AND is_up_limit = 1
-        """
-        stats_df = pd.read_sql(stats_sql, conn)
+        market_stats = quotes_manager.get_market_stats()
+        concept_stats = quotes_manager.get_concept_stats()
         
-        # 获取行业涨停分布
-        industry_sql = """
-            SELECT 
-                s.industry,
-                COUNT(*) as limit_up_count
-            FROM realtime_quotes r
-            JOIN stock s ON r.ts_code = s.ts_code
-            WHERE r.trade_date = CURDATE() AND r.is_up_limit = 1
-            GROUP BY s.industry
-            ORDER BY limit_up_count DESC
-        """
-        industry_df = pd.read_sql(industry_sql, conn)
+        print("市场统计数据:", market_stats)  # 添加调试日志
+        print("概念统计数据:", concept_stats)  # 添加调试日志
         
-        return jsonify({
-            'statistics': stats_df.to_dict('records')[0],
-            'industry_distribution': industry_df.to_dict('records')
-        })
-    finally:
-        conn.close()
+        # 获取涨停股票列表
+        limit_up_stocks = []
+        for ts_code, stock in market_stats.get('limit_ups', {}).items():
+            limit_up_stocks.append({
+                'ts_code': ts_code,
+                'name': stock['name'],
+                'change_pct': stock['change_pct'],
+                'continuous_days': 1 + (1 if stock['is_continuous'] else 0),
+                'first_limit_time': stock.get('first_limit_time', '-'),
+                'amount': stock['amount'] / 100000000,  # 转换为亿
+                'industry': stock['industry'],
+                'concepts': stock['concepts'],
+                'is_broken': ts_code in market_stats.get('broken_limits', {})
+            })
+        
+        # 获取概念统计
+        concept_summary = []
+        for concept, stats in concept_stats.items():
+            concept_summary.append({
+                'concept': concept,
+                'limit_up_count': stats['limit_up_count'],
+                'continuous_count': len([s for s in stats['stocks']['limit_ups'] 
+                                      if s['ts_code'] in market_stats.get('limit_ups', {}) 
+                                      and market_stats['limit_ups'][s['ts_code']]['is_continuous']]),
+                'broken_count': stats['broken_limit_count'],
+                'limit_down_count': stats['limit_down_count']
+            })
+        
+        response_data = {
+            'statistics': {
+                'limit_up_count': market_stats.get('limit_up_count', 0),
+                'gem_limit_up_count': market_stats.get('cyb_limit_up_count', 0) + market_stats.get('kc_limit_up_count', 0),
+                'broken_limit_count': market_stats.get('broken_limit_count', 0),
+                'limit_down_count': market_stats.get('limit_down_count', 0),
+                'continuous_limit_count': market_stats.get('continuous_limit_count', 0)
+            },
+            'concept_stats': concept_summary,
+            'limit_stocks': limit_up_stocks
+        }
+        
+        print("返回数据:", response_data)  # 添加调试日志
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"获取涨停分析数据失败: {str(e)}")
+        import traceback
+        traceback.print_exc()  # 打印完整错误堆栈
+        return jsonify({'error': str(e)})
 
 @app.route('/api/stock_kline/<ts_code>')
 def stock_kline(ts_code):
@@ -181,7 +209,7 @@ def stock_kline(ts_code):
                     'low': float(today_quote['low']),   
                     'close': float(today_quote['price']),
                     'volume': float(today_quote['amount']/today_quote['price']),  # 用成交额除以价格估算成交量
-                    'amount': float(today_quote['amount'])
+                    'amount': float(today_quote['amount'])/1000
                 }
                 
                 # 如果最后一条记录是今天的数据，则更新它

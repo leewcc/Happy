@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import traceback
 from sqlalchemy import create_engine
+import time  # 新增
 
 # 设置 Tushare Pro 的 token
 ts.set_token('ne576cb10ae327812a88f58b758c3233e23')
@@ -330,58 +331,77 @@ def update_turnover_avg(daily_data, specified_date, conn):
 
 if __name__ == "__main__":
     try:
-        # 指定日期，格式为 'YYYYMMDD'
-        specified_date = '20250409'
-        specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
-        sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
+        # 等待直到17:00
+        while True:
+            current_time = datetime.now()
+            target_time = current_time.replace(hour=17, minute=0, second=0, microsecond=0)
+            
+            if current_time.hour < 17:
+                # 计算到17:00还需要多少秒
+                wait_seconds = (target_time - current_time).total_seconds()
+                print(f"当前时间: {current_time.strftime('%H:%M:%S')}, 等待到17:00执行，还需等待 {int(wait_seconds)} 秒")
+                time.sleep(wait_seconds)  # 每分钟检查一次
+                continue
+    
+            
+            print(f"开始执行数据加载任务，当前时间: {current_time.strftime('%H:%M:%S')}")
+            
+            # 指定日期，格式为 'YYYYMMDD'
+            specified_date = "20250410"
+            specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
+            sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 
-        all_codes = get_all_stock_codes()
-        for ts_code, stock_code, stock_name in all_codes:
-            try:
-                # 检查数据是否已存在
-                if check_data_exists(stock_code, specified_date):
-                    print(f"{stock_code} 在 {specified_date} 的数据已存在，跳过。")
-                    continue
+            all_codes = get_all_stock_codes()
+            for ts_code, stock_code, stock_name in all_codes:
+                try:
+                    # 检查数据是否已存在
+                    if check_data_exists(stock_code, specified_date):
+                        print(f"{stock_code} 在 {specified_date} 的数据已存在，跳过。")
+                        continue
 
-                # 获取指定日期前 60 天内的日线数据
-                daily_data = pro.daily(ts_code=ts_code, start_date=sixty_days_ago, end_date=specified_date)
-                if not daily_data.empty:
-                    # 按日期升序排序
-                    daily_data = daily_data.sort_values(by='trade_date')
+                    # 获取指定日期前 60 天内的日线数据
+                    daily_data = pro.daily(ts_code=ts_code, start_date=sixty_days_ago, end_date=specified_date)
+                    if not daily_data.empty:
+                        # 按日期升序排序
+                        daily_data = daily_data.sort_values(by='trade_date')
 
-                    # 获取指定日期的基本面数据
-                    daily_basic_data = pro.daily_basic(ts_code=ts_code, trade_date=specified_date)
-                    if not daily_basic_data.empty:
-                        # 合并基本面数据到日线数据，指定 suffixes 为空字符串
-                        merged_data = pd.merge(daily_data, daily_basic_data, on=['ts_code', 'trade_date'], how='left', suffixes=('', '_drop'))
-                        # 删除多余的列
-                        columns_to_drop = [col for col in merged_data.columns if col.endswith('_drop')]
-                        daily_data = merged_data.drop(columns=columns_to_drop)
+                        # 获取指定日期的基本面数据
+                        daily_basic_data = pro.daily_basic(ts_code=ts_code, trade_date=specified_date)
+                        if not daily_basic_data.empty:
+                            # 合并基本面数据到日线数据，指定 suffixes 为空字符串
+                            merged_data = pd.merge(daily_data, daily_basic_data, on=['ts_code', 'trade_date'], how='left', suffixes=('', '_drop'))
+                            # 删除多余的列
+                            columns_to_drop = [col for col in merged_data.columns if col.endswith('_drop')]
+                            daily_data = merged_data.drop(columns=columns_to_drop)
 
-                    # 获取指定日期的涨跌停价格
-                    stk_limit_data = pro.stk_limit(ts_code=ts_code, trade_date=specified_date)
-                    if not stk_limit_data.empty:
-                        # 合并涨跌停价格数据到日线数据
-                        daily_data = pd.merge(daily_data, stk_limit_data, on=['ts_code', 'trade_date'], how='left')
+                        # 获取指定日期的涨跌停价格
+                        stk_limit_data = pro.stk_limit(ts_code=ts_code, trade_date=specified_date)
+                        if not stk_limit_data.empty:
+                            # 合并涨跌停价格数据到日线数据
+                            daily_data = pd.merge(daily_data, stk_limit_data, on=['ts_code', 'trade_date'], how='left')
 
-                    # 计算技术指标
-                    daily_data = calculate_indicators(daily_data)
-                    # 计算是否涨停、是否炸板和是否跌停
-                    daily_data = calculate_limit_info(daily_data, stock_name)
-                    # 插入指定日期的数据到 daily_data 表
-                    insert_into_daily_data_table(stock_code, stock_name, daily_data, specified_date)
-                    # 更新成交额移动平均数据
-                    update_turnover_avg(daily_data, specified_date, conn)
-                    print(f"{stock_code} 数据插入成功。")
-            except Exception as e:
-                tb = traceback.extract_tb(e.__traceback__)
-                last_frame = tb[-1]
-                line_number = last_frame.lineno
-                print(f"获取 {stock_code} 数据时出错: {e}，错误发生在第 {line_number} 行")
-                print(traceback.format_exc())
+                        # 计算技术指标
+                        daily_data = calculate_indicators(daily_data)
+                        # 计算是否涨停、是否炸板和是否跌停
+                        daily_data = calculate_limit_info(daily_data, stock_name)
+                        # 插入指定日期的数据到 daily_data 表
+                        insert_into_daily_data_table(stock_code, stock_name, daily_data, specified_date)
+                        # 更新成交额移动平均数据
+                        update_turnover_avg(daily_data, specified_date, conn)
+                        print(f"{stock_code} 数据插入成功。")
+                except Exception as e:
+                    tb = traceback.extract_tb(e.__traceback__)
+                    last_frame = tb[-1]
+                    line_number = last_frame.lineno
+                    print(f"获取 {stock_code} 数据时出错: {e}，错误发生在第 {line_number} 行")
+                    print(traceback.format_exc())
 
-        # 在处理完所有股票数据后，计算上涨下跌统计
-        calculate_up_down_stats(specified_date, conn)
+            # 在处理完所有股票数据后，计算上涨下跌统计
+            calculate_up_down_stats(specified_date, conn)
+            
+            # 任务完成后等待到第二天
+            print("今天的任务已完成，等待到明天17:00继续执行")
+            time.sleep(3600)  # 休息一小时后继续检查
 
     except Exception as e:
         print(f"处理数据时出错: {e}")

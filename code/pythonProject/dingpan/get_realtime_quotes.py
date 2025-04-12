@@ -396,6 +396,21 @@ class QuotesManager:
             'kc': {'code': '000688.SH', 'name': '科创50'},
             'bj': {'code': '899050.BJ', 'name': '北证50'}
         }
+        
+        # 存储上一个交易日的涨停股票
+        self.last_trade_date_limits = set()
+        
+        # 实时数据存储
+        self.current_limit_ups = {}    # 当前涨停股票 {ts_code: {name, price, ...}}
+        self.current_limit_downs = {}  # 当前跌停股票
+        self.current_broken_limits = {}  # 当前炸板股票
+        
+        # 添加概念维度统计数据
+        self.concept_stats = {}  # {concept: {limit_ups: [], limit_downs: [], broken_limits: [], non_main_limit_ups: []}}
+        
+        # 初始化上一个交易日涨停股票
+        self._init_last_trade_date_limits()
+        
         log("QuotesManager 初始化完成")
 
     def is_ready(self):
@@ -631,23 +646,112 @@ class QuotesManager:
         """更新市场统计数据"""
         try:
             # 基本统计
-            up_count = sum(1 for quote in self.quotes_data if quote['change_pct'] > 0)
-            down_count = sum(1 for quote in self.quotes_data if quote['change_pct'] < 0)
-            limit_up_count = sum(1 for quote in self.quotes_data if quote['is_up_limit'])
-            limit_down_count = sum(1 for quote in self.quotes_data if quote['is_down_limit'])
+            up_count = 0
+            down_count = 0
+            limit_up_count = 0
+            limit_down_count = 0
+            cyb_limit_up_count = 0  # 创业板涨停数
+            kc_limit_up_count = 0   # 科创板涨停数
+            broken_limit_count = 0   # 炸板数
+            continuous_limit_count = 0  # 连板数
             
-            # 添加涨跌分布数据
-            stocks_data = [{
-                'ts_code': quote['ts_code'],
-                'change_pct': quote['change_pct']
-            } for quote in self.quotes_data]
+            # 使用临时变量存储统计数据
+            temp_limit_ups = {}    # 当前涨停股票
+            temp_limit_downs = {}  # 当前跌停股票
+            temp_broken_limits = {}  # 当前炸板股票
+            temp_concept_stats = {}  # 概念维度统计
             
+            # 临时存储当前涨停股票
+            current_limits = set()
+            
+            for quote in self.quotes_data:
+                ts_code = quote['ts_code']
+                name = quote['name']
+                change_pct = quote['change_pct']
+                is_up_limit = quote['is_up_limit']
+                is_down_limit = quote['is_down_limit']
+                price = float(quote['price'])
+                high = float(quote['high'])
+                
+                # 获取涨停价
+                up_limit_price = LIMIT_PRICE_MAP.get(ts_code, {}).get('up_limit', 0)
+                
+                # 涨跌统计
+                if change_pct > 0:
+                    up_count += 1
+                elif change_pct < 0:
+                    down_count += 1
+                
+                # 涨跌停统计
+                if is_up_limit:
+                    limit_up_count += 1
+                    current_limits.add(ts_code)
+                    
+                    # 存储涨停股票信息
+                    temp_limit_ups[ts_code] = {
+                        'name': name,
+                        'price': price,
+                        'change_pct': change_pct,
+                        'amount': quote['amount'],
+                        'industry': quote['industry'],
+                        'concepts': quote['concepts'],
+                        'is_continuous': ts_code in self.last_trade_date_limits
+                    }
+                    
+                    # 创业板涨停统计
+                    if ts_code.startswith('300'):
+                        cyb_limit_up_count += 1
+                    # 科创板涨停统计
+                    elif ts_code.startswith('688'):
+                        kc_limit_up_count += 1
+                    
+                    # 连板统计 - 如果是昨天的涨停股票
+                    if ts_code in self.last_trade_date_limits:
+                        continuous_limit_count += 1
+                        
+                elif is_down_limit:
+                    limit_down_count += 1
+                    # 存储跌停股票信息
+                    temp_limit_downs[ts_code] = {
+                        'name': name,
+                        'price': price,
+                        'change_pct': change_pct,
+                        'amount': quote['amount'],
+                        'industry': quote['industry'],
+                        'concepts': quote['concepts']
+                    }
+                
+                # 炸板统计 - 最高价达到涨停价但当前价格不是涨停价
+                if abs(high - up_limit_price) < 0.01 and abs(price - up_limit_price) >= 0.01:
+                    broken_limit_count += 1
+                    # 存储炸板股票信息
+                    temp_broken_limits[ts_code] = {
+                        'name': name,
+                        'price': price,
+                        'high': high,
+                        'change_pct': change_pct,
+                        'amount': quote['amount'],
+                        'industry': quote['industry'],
+                        'concepts': quote['concepts']
+                    }
+            
+            # 更新市场统计数据
             self.market_stats = {
                 'up_count': up_count,
                 'down_count': down_count,
                 'limit_up_count': limit_up_count,
                 'limit_down_count': limit_down_count,
-                'stocks': stocks_data,  # 添加个股涨跌幅数据
+                'cyb_limit_up_count': cyb_limit_up_count,
+                'kc_limit_up_count': kc_limit_up_count,
+                'broken_limit_count': broken_limit_count,
+                'continuous_limit_count': continuous_limit_count,
+                'limit_ups': self.current_limit_ups,      # 添加涨停股票列表
+                'limit_downs': self.current_limit_downs,  # 添加跌停股票列表
+                'broken_limits': self.current_broken_limits,  # 添加炸板股票列表
+                'stocks': [{
+                    'ts_code': quote['ts_code'],
+                    'change_pct': quote['change_pct']
+                } for quote in self.quotes_data],
                 'total_amount': sum(self.index_data[code]['amount'] 
                                   for code in ['000001.SH', '399001.SZ', '399006.SZ'] 
                                   if code in self.index_data),
@@ -656,7 +760,127 @@ class QuotesManager:
                 'cyb_amount': self.index_data.get('399006.SZ', {}).get('amount', 0)
             }
             
-            log(f"市场统计 - 上涨: {up_count} 下跌: {down_count} 涨停: {limit_up_count} 跌停: {limit_down_count}")
+            # 更新上一次涨停记录
+            self.previous_limits = current_limits
+            
+            # 每天收盘清理炸板记录
+            current_time = datetime.now().time()
+            if current_time.hour >= 15:
+                self.current_broken_limits.clear()
+            
+            log(f"市场统计 - 上涨: {up_count} 下跌: {down_count} "
+                f"涨停: {limit_up_count} 跌停: {limit_down_count} "
+                f"创业板涨停: {cyb_limit_up_count} 科创板涨停: {kc_limit_up_count} "
+                f"连板: {continuous_limit_count} 炸板: {broken_limit_count}")
+            
+            # 清空概念统计数据
+            self.concept_stats.clear()
+            
+            for quote in self.quotes_data:
+                # 处理概念统计
+                concepts = quote['concepts'].split(',') if quote['concepts'] != '-' else []
+                for concept in concepts:
+                    concept = concept.strip()
+                    if not concept:
+                        continue
+                        
+                    # 初始化概念统计数据
+                    if concept not in temp_concept_stats:
+                        temp_concept_stats[concept] = {
+                            'limit_ups': [],      # 涨停股票列表
+                            'limit_downs': [],    # 跌停股票列表
+                            'broken_limits': [],  # 炸板股票列表
+                            'non_main_limit_ups': []  # 非主板涨停股票列表
+                        }
+                    
+                    # 统计涨停
+                    if is_up_limit:
+                        temp_concept_stats[concept]['limit_ups'].append({
+                            'ts_code': ts_code,
+                            'name': name
+                        })
+                        # 非主板涨停统计（创业板和科创板）
+                        if ts_code.startswith(('300', '688')):
+                            temp_concept_stats[concept]['non_main_limit_ups'].append({
+                                'ts_code': ts_code,
+                                'name': name
+                            })
+                    
+                    # 统计跌停
+                    elif is_down_limit:
+                        temp_concept_stats[concept]['limit_downs'].append({
+                            'ts_code': ts_code,
+                            'name': name
+                        })
+                    
+                    # 统计炸板
+                    if abs(high - up_limit_price) < 0.01 and abs(price - up_limit_price) >= 0.01:
+                        temp_concept_stats[concept]['broken_limits'].append({
+                            'ts_code': ts_code,
+                            'name': name
+                        })
+
+            # 计算概念维度的统计数据
+            concept_summary = {
+                concept: {
+                    'limit_up_count': len(stats['limit_ups']),
+                    'limit_down_count': len(stats['limit_downs']),
+                    'broken_limit_count': len(stats['broken_limits']),
+                    'non_main_limit_up_count': len(stats['non_main_limit_ups']),
+                    'stocks': {
+                        'limit_ups': stats['limit_ups'],
+                        'limit_downs': stats['limit_downs'],
+                        'broken_limits': stats['broken_limits'],
+                        'non_main_limit_ups': stats['non_main_limit_ups']
+                    }
+                }
+                for concept, stats in temp_concept_stats.items()
+            }
+
+            # 一次性更新所有统计数据
+            self.market_stats = {
+                'up_count': up_count,
+                'down_count': down_count,
+                'limit_up_count': limit_up_count,
+                'limit_down_count': limit_down_count,
+                'cyb_limit_up_count': cyb_limit_up_count,
+                'kc_limit_up_count': kc_limit_up_count,
+                'broken_limit_count': broken_limit_count,
+                'continuous_limit_count': continuous_limit_count,
+                'limit_ups': temp_limit_ups,
+                'limit_downs': temp_limit_downs,
+                'broken_limits': temp_broken_limits,
+                'concept_stats': concept_summary,
+                'stocks': [{
+                    'ts_code': quote['ts_code'],
+                    'change_pct': quote['change_pct']
+                } for quote in self.quotes_data],
+                'total_amount': sum(self.index_data[code]['amount'] 
+                                  for code in ['000001.SH', '399001.SZ', '399006.SZ'] 
+                                  if code in self.index_data),
+                'sh_amount': self.index_data.get('000001.SH', {}).get('amount', 0),
+                'sz_amount': self.index_data.get('399001.SZ', {}).get('amount', 0),
+                'cyb_amount': self.index_data.get('399006.SZ', {}).get('amount', 0)
+            }
+            
+            # 更新实时数据存储
+            self.current_limit_ups = temp_limit_ups
+            self.current_limit_downs = temp_limit_downs
+            self.current_broken_limits = temp_broken_limits
+            self.concept_stats = temp_concept_stats
+            
+            # 更新上一次涨停记录
+            self.previous_limits = current_limits
+            
+            # 每天收盘清理炸板记录
+            current_time = datetime.now().time()
+            if current_time.hour >= 15:
+                self.current_broken_limits.clear()
+            
+            log(f"市场统计 - 上涨: {up_count} 下跌: {down_count} "
+                f"涨停: {limit_up_count} 跌停: {limit_down_count} "
+                f"创业板涨停: {cyb_limit_up_count} 科创板涨停: {kc_limit_up_count} "
+                f"连板: {continuous_limit_count} 炸板: {broken_limit_count}")
             
         except Exception as e:
             log(f"更新市场统计失败: {str(e)}")
@@ -696,9 +920,9 @@ class QuotesManager:
                             'is_down_limit': is_down_limit,
                             'industry': stock_info['industry'],
                             'concepts': stock_info['concepts'],
-                            'open': float(df['OPEN'].iloc[0]),
-                            'high': float(df['HIGH'].iloc[0]),
-                            'low': float(df['LOW'].iloc[0])
+                            'open': row['OPEN'],
+                            'high': row['HIGH'],
+                            'low': row['LOW']
                         }
                         quotes.append(quote)
                         success_count += 1
@@ -761,9 +985,87 @@ class QuotesManager:
     def get_market_stats(self):
         """获取市场统计数据"""
         try:
+            print("当前市场统计数据:", self.market_stats)  # 添加调试日志
             return self.market_stats
         except Exception as e:
             log(f"获取市场统计失败: {str(e)}")
+            return {}
+
+    def get_concept_stats(self):
+        """获取概念维度统计数据"""
+        try:
+            print("当前概念统计数据:", self.concept_stats)  # 添加调试日志
+            return self.market_stats.get('concept_stats', {})
+        except Exception as e:
+            log(f"获取概念统计失败: {str(e)}")
+            return {}
+
+    def _init_last_trade_date_limits(self):
+        """初始化上一个交易日涨停股票"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # 获取最近的交易日
+            sql_last_date = """
+                SELECT DISTINCT trade_date 
+                FROM limit_stocks
+                ORDER BY trade_date DESC 
+                LIMIT 1
+            """
+            cursor.execute(sql_last_date)
+            last_date = cursor.fetchone()
+            
+            if last_date:
+                # 获取该交易日的涨停股票
+                sql_limits = """
+                    SELECT ts_code 
+                    FROM limit_stocks
+                    WHERE trade_date = %s 
+                    AND limit_type = 'U'  # 修改这里，使用 limit_type = 'U' 表示涨停
+                """
+                cursor.execute(sql_limits, (last_date[0],))
+                results = cursor.fetchall()
+                
+                # 存储涨停股票代码
+                self.last_trade_date_limits = {row[0] for row in results}
+                log(f"成功加载上一交易日({last_date[0]})涨停股票: {len(self.last_trade_date_limits)}只")
+                
+            else:
+                log("未找到上一交易日数据")
+                
+        except Exception as e:
+            log(f"初始化上一交易日涨停股票失败: {str(e)}")
+        finally:
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
+
+    def get_limit_up_stocks(self):
+        """获取当前涨停股票列表"""
+        return self.current_limit_ups
+
+    def get_limit_down_stocks(self):
+        """获取当前跌停股票列表"""
+        return self.current_limit_downs
+
+    def get_broken_limit_stocks(self):
+        """获取当前炸板股票列表"""
+        return self.current_broken_limits
+
+    def get_hot_concepts(self, limit=10):
+        """获取热门概念(按涨停数量排序)"""
+        try:
+            concept_stats = self.market_stats.get('concept_stats', {})
+            sorted_concepts = sorted(
+                concept_stats.items(),
+                key=lambda x: x[1]['limit_up_count'],
+                reverse=True
+            )
+            return dict(sorted_concepts[:limit])
+        except Exception as e:
+            log(f"获取热门概念失败: {str(e)}")
             return {}
 
 def get_stock_industry(ts_code):

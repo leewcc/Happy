@@ -7,7 +7,7 @@ from ta.momentum import StochasticOscillator
 from datetime import datetime, timedelta
 
 # 设置 Tushare Pro 的 token
-ts.set_token('i593c24d0926bfb845f136082a335d64f71')
+ts.set_token('ne576cb10ae327812a88f58b758c3233e23')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -128,7 +128,7 @@ industry_index_df = pd.DataFrame(industry_index_rows, columns=['ts_code', 'name'
 
 # 指定日期
 target_date = '20250321'  # 你可以修改这个日期
-target_date = '20250409'  # 你可以修改这个日期
+target_date = '20250410'  # 你可以修改这个日期
 # 计算近 120 天的开始日期
 target_datetime = datetime.strptime(target_date, '%Y%m%d')
 start_date = (target_datetime - timedelta(days=120)).strftime('%Y%m%d')

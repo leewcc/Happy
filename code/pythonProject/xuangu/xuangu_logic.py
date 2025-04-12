@@ -284,24 +284,24 @@ def filter_stocks(filters):
                 avg_column = 'avg_5d'
                 
             query = f"""
-            SELECT DISTINCT stock_code
+            SELECT DISTINCT SUBSTRING_INDEX(stock_code, '.', 1) as stock_code
             FROM stock_turnover_avg
             WHERE trade_date = %(latest_date)s
             AND {avg_column} >= %(amount)s
-            AND stock_code IN %(stock_codes)s
             """
             
             params = {
                 'latest_date': latest_date,
-                'amount': amount,
-                'stock_codes': tuple(result_stocks)
+                'amount': amount
             }
             
             logger.info(f"SQL - 成交额筛选: {query}")
             logger.info(f"参数: {params}")
             
             df_turnover = pd.read_sql(query, engine, params=params)
-            result_stocks = set(df_turnover['stock_code'])
+            turnover_stocks = set(df_turnover['stock_code'])
+            # 与之前的结果取交集
+            result_stocks = turnover_stocks if result_stocks is None else result_stocks & turnover_stocks
             logger.info(f"成交额筛选后剩余股票数: {len(result_stocks)}")
         else:
             logger.info("天数为0，跳过成交额筛选")
