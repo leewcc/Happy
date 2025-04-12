@@ -89,6 +89,7 @@ def init_limit_prices():
     global LIMIT_PRICE_MAP
     try:
         today = datetime.now().strftime('%Y%m%d')
+        today = '20250411'
         print(f"正在从数据库获取 {today} 的涨跌停价格数据...")
         
         # 连接数据库
@@ -409,8 +410,21 @@ class QuotesManager:
         # 添加概念维度统计数据
         self.concept_stats = {}  # {concept: {limit_ups: [], limit_downs: [], broken_limits: [], non_main_limit_ups: []}}
         
-        # 初始化上一个交易日涨停股票
-        self._init_last_trade_date_limits()
+        # 添加上一个交易日统计数据存储
+        self.last_trade_date_stats = {
+            'broken_count': 0,      # 炸板数
+            'consecutive_count': 0,  # 连板数
+            'down_count': 0,        # 下跌数
+            'limit_down_count': 0,  # 跌停数
+            'limit_up_count': 0,    # 涨停数
+            'up_count': 0,          # 上涨家数
+            'trade_date': None      # 统计日期
+        }
+        
+        # 初始化上一个交易日涨停股票和统计数据
+        self._init_last_trade_date_data()
+        
+        self.non_trade_time_updated = False
         
         log("QuotesManager 初始化完成")
 
@@ -534,11 +548,18 @@ class QuotesManager:
 
     def _update_index_quotes(self):
         """更新指数行情"""
-        if not is_trade_time():
-            return
-            
         try:
-            # log("开始更新指数行情...")
+            # 检查是否为交易时间
+            if not is_trade_time():
+                # 非交易时间且已更新过,则跳过
+                if self.non_trade_time_updated:
+                    return
+                # 非交易时间首次更新,设置标志位
+                self.non_trade_time_updated = True
+            else:
+                # 交易时间重置标志位
+                self.non_trade_time_updated = False
+            
             success_count = 0
             
             for name, info in self.index_codes.items():
@@ -546,9 +567,6 @@ class QuotesManager:
                 if quote:
                     self.index_data[info['code']] = quote
                     success_count += 1
-                    # log(f"{info['name']}: {quote['price']} ({quote['change_pct']}%)")
-            
-            # log(f"指数行情更新完成，成功获取 {success_count}/{len(self.index_codes)} 个指数")
             
             # 更新成交额趋势
             current_time = datetime.now()
@@ -575,11 +593,18 @@ class QuotesManager:
 
     def _update_stock_quotes(self):
         """更新个股行情"""
-        if not is_trade_time():
-            return
-            
         try:
-            # log("开始更新个股行情...")
+            # 检查是否为交易时间
+            if not is_trade_time():
+                # 非交易时间且已更新过,则跳过
+                if self.non_trade_time_updated:
+                    return
+                # 非交易时间首次更新,设置标志位
+                self.non_trade_time_updated = True
+            else:
+                # 交易时间重置标志位
+                self.non_trade_time_updated = False
+            
             split_stocks = split_list(STOCK_GROUPS, NUM_THREADS)
             all_quotes = []
             
@@ -587,7 +612,6 @@ class QuotesManager:
                 futures = []
                 for i, stock_group_list in enumerate(split_stocks):
                     flat_stocks = [stock for group in stock_group_list for stock in group]
-                    # log(f"线程 {i+1} 开始处理 {len(flat_stocks)} 只股票")
                     future = executor.submit(self._get_stock_quotes, flat_stocks)
                     futures.append(future)
                 
@@ -596,7 +620,6 @@ class QuotesManager:
                     if result:
                         all_quotes.extend(result)
             
-            # log(f"个股行情更新完成，成功获取 {len(all_quotes)} 只股票")
             self.quotes_data = all_quotes
             
             # 更新市场统计
@@ -608,9 +631,6 @@ class QuotesManager:
     def _get_index_quote(self, code):
         """获取单个指数行情"""
         try:
-            # 不需要转换代码格式，直接使用正确的代码
-            # log(f"获取指数 {code} 行情...")
-            
             df = ts.realtime_quote(code)
             if df is not None and not df.empty:
                 try:
@@ -632,7 +652,6 @@ class QuotesManager:
                         'high': float(df['HIGH'].iloc[0]),
                         'low': float(df['LOW'].iloc[0])
                     }
-                    # log(f"指数 {code} 获取成功: {price} ({change_pct:+.2f}%)")
                     return quote
                 except Exception as e:
                     log(f"处理指数 {code} 数据失败: {str(e)}")
@@ -660,7 +679,6 @@ class QuotesManager:
             temp_limit_ups = {}    # 当前涨停股票
             temp_limit_downs = {}  # 当前跌停股票
             temp_broken_limits = {}  # 当前炸板股票
-            temp_concept_stats = {}  # 概念维度统计
             
             # 临时存储当前涨停股票
             current_limits = set()
@@ -668,6 +686,11 @@ class QuotesManager:
             for quote in self.quotes_data:
                 ts_code = quote['ts_code']
                 name = quote['name']
+                
+                # 跳过ST股票
+                if 'ST' in name:
+                    continue
+                    
                 change_pct = quote['change_pct']
                 is_up_limit = quote['is_up_limit']
                 is_down_limit = quote['is_down_limit']
@@ -736,50 +759,36 @@ class QuotesManager:
                         'concepts': quote['concepts']
                     }
             
-            # 更新市场统计数据
-            self.market_stats = {
-                'up_count': up_count,
-                'down_count': down_count,
-                'limit_up_count': limit_up_count,
-                'limit_down_count': limit_down_count,
-                'cyb_limit_up_count': cyb_limit_up_count,
-                'kc_limit_up_count': kc_limit_up_count,
-                'broken_limit_count': broken_limit_count,
-                'continuous_limit_count': continuous_limit_count,
-                'limit_ups': self.current_limit_ups,      # 添加涨停股票列表
-                'limit_downs': self.current_limit_downs,  # 添加跌停股票列表
-                'broken_limits': self.current_broken_limits,  # 添加炸板股票列表
-                'stocks': [{
-                    'ts_code': quote['ts_code'],
-                    'change_pct': quote['change_pct']
-                } for quote in self.quotes_data],
-                'total_amount': sum(self.index_data[code]['amount'] 
-                                  for code in ['000001.SH', '399001.SZ', '399006.SZ'] 
-                                  if code in self.index_data),
-                'sh_amount': self.index_data.get('000001.SH', {}).get('amount', 0),
-                'sz_amount': self.index_data.get('399001.SZ', {}).get('amount', 0),
-                'cyb_amount': self.index_data.get('399006.SZ', {}).get('amount', 0)
-            }
-            
-            # 更新上一次涨停记录
-            self.previous_limits = current_limits
-            
-            # 每天收盘清理炸板记录
-            current_time = datetime.now().time()
-            if current_time.hour >= 15:
-                self.current_broken_limits.clear()
-            
-            log(f"市场统计 - 上涨: {up_count} 下跌: {down_count} "
-                f"涨停: {limit_up_count} 跌停: {limit_down_count} "
-                f"创业板涨停: {cyb_limit_up_count} 科创板涨停: {kc_limit_up_count} "
-                f"连板: {continuous_limit_count} 炸板: {broken_limit_count}")
-            
             # 清空概念统计数据
-            self.concept_stats.clear()
+            temp_concept_stats = {}
             
+            # 添加调试日志
+            log("开始更新概念统计数据...")
+            
+            # 先处理概念统计
             for quote in self.quotes_data:
+                ts_code = quote['ts_code']
+                name = quote['name']
+                
+                # 跳过ST股票
+                if 'ST' in name:
+                    continue
+                    
+                is_up_limit = quote['is_up_limit']
+                is_down_limit = quote['is_down_limit']
+                price = float(quote['price'])
+                high = float(quote['high'])
+                
+                # 获取涨停价
+                up_limit_price = LIMIT_PRICE_MAP.get(ts_code, {}).get('up_limit', 0)
+                
                 # 处理概念统计
                 concepts = quote['concepts'].split(',') if quote['concepts'] != '-' else []
+                
+                # 添加调试日志
+                if is_up_limit or is_down_limit:
+                    log(f"股票 {ts_code}({name}) 的概念列表: {concepts}")
+                
                 for concept in concepts:
                     concept = concept.strip()
                     if not concept:
@@ -821,24 +830,49 @@ class QuotesManager:
                             'name': name
                         })
 
-            # 计算概念维度的统计数据
-            concept_summary = {
-                concept: {
+            # 打印概念统计结果
+            log("\n概念统计结果:")
+            
+            # 对概念统计进行排序，只保留有涨停的概念
+            sorted_concepts = sorted(
+                [item for item in temp_concept_stats.items() if len(item[1]['limit_ups']) > 0],  # 过滤掉无涨停的概念
+                key=lambda x: len(x[1]['limit_ups']),  # 按涨停股票列表长度排序
+                reverse=True  # 降序排列
+            )
+            
+            # 重新构建排序后的概念统计
+            sorted_concept_stats = {}
+            for concept, stats in sorted_concepts:
+                sorted_concept_stats[concept] = {
+                    'limit_ups': stats['limit_ups'],
+                    'limit_downs': stats['limit_downs'],
+                    'broken_limits': stats['broken_limits'],
+                    'non_main_limit_ups': stats['non_main_limit_ups'],
                     'limit_up_count': len(stats['limit_ups']),
                     'limit_down_count': len(stats['limit_downs']),
                     'broken_limit_count': len(stats['broken_limits']),
-                    'non_main_limit_up_count': len(stats['non_main_limit_ups']),
-                    'stocks': {
-                        'limit_ups': stats['limit_ups'],
-                        'limit_downs': stats['limit_downs'],
-                        'broken_limits': stats['broken_limits'],
-                        'non_main_limit_ups': stats['non_main_limit_ups']
-                    }
+                    'non_main_limit_up_count': len(stats['non_main_limit_ups'])
                 }
-                for concept, stats in temp_concept_stats.items()
-            }
+                
+                # 打印统计信息
+                log(f"\n概念: {concept}")
+                log(f"涨停数: {len(stats['limit_ups'])} - {[s['name'] for s in stats['limit_ups']]}")
+                if len(stats['limit_downs']) > 0:
+                    log(f"跌停数: {len(stats['limit_downs'])} - {[s['name'] for s in stats['limit_downs']]}")
+                if len(stats['broken_limits']) > 0:
+                    log(f"炸板数: {len(stats['broken_limits'])} - {[s['name'] for s in stats['broken_limits']]}")
+                if len(stats['non_main_limit_ups']) > 0:
+                    log(f"非主板涨停数: {len(stats['non_main_limit_ups'])} - {[s['name'] for s in stats['non_main_limit_ups']]}")
 
-            # 一次性更新所有统计数据
+            # 更新概念统计数据（使用排序后的数据）
+            self.concept_stats = sorted_concept_stats
+            
+            # 一次性更新所有数据
+            self.current_limit_ups = temp_limit_ups
+            self.current_limit_downs = temp_limit_downs
+            self.current_broken_limits = temp_broken_limits
+            
+            # 最后一次性更新市场统计数据
             self.market_stats = {
                 'up_count': up_count,
                 'down_count': down_count,
@@ -848,10 +882,10 @@ class QuotesManager:
                 'kc_limit_up_count': kc_limit_up_count,
                 'broken_limit_count': broken_limit_count,
                 'continuous_limit_count': continuous_limit_count,
-                'limit_ups': temp_limit_ups,
-                'limit_downs': temp_limit_downs,
-                'broken_limits': temp_broken_limits,
-                'concept_stats': concept_summary,
+                'limit_ups': self.current_limit_ups,
+                'limit_downs': self.current_limit_downs,
+                'broken_limits': self.current_broken_limits,
+                'concept_stats': self.concept_stats,  # 使用排序后的概念统计
                 'stocks': [{
                     'ts_code': quote['ts_code'],
                     'change_pct': quote['change_pct']
@@ -863,13 +897,7 @@ class QuotesManager:
                 'sz_amount': self.index_data.get('399001.SZ', {}).get('amount', 0),
                 'cyb_amount': self.index_data.get('399006.SZ', {}).get('amount', 0)
             }
-            
-            # 更新实时数据存储
-            self.current_limit_ups = temp_limit_ups
-            self.current_limit_downs = temp_limit_downs
-            self.current_broken_limits = temp_broken_limits
-            self.concept_stats = temp_concept_stats
-            
+
             # 更新上一次涨停记录
             self.previous_limits = current_limits
             
@@ -890,7 +918,6 @@ class QuotesManager:
         """获取单个线程中的股票实时行情"""
         try:
             stock_codes = ','.join(stock_list)
-            # log(f"正在获取 {len(stock_list)} 只股票的行情...")
             
             df = ts.realtime_quote(stock_codes)
             if df is not None and not df.empty:
@@ -937,7 +964,6 @@ class QuotesManager:
                         log(f"错误详情: {str(e)}")
                         log(f"原始数据: {row.to_dict()}")
                 
-                # log(f"股票行情获取完成 - 成功: {success_count}, 失败: {error_count}")
                 return quotes
             else:
                 log("获取股票行情返回空数据")
@@ -1001,8 +1027,8 @@ class QuotesManager:
             log(f"获取概念统计失败: {str(e)}")
             return {}
 
-    def _init_last_trade_date_limits(self):
-        """初始化上一个交易日涨停股票"""
+    def _init_last_trade_date_data(self):
+        """初始化上一个交易日的涨停股票和统计数据"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -1010,7 +1036,7 @@ class QuotesManager:
             # 获取最近的交易日
             sql_last_date = """
                 SELECT DISTINCT trade_date 
-                FROM limit_stocks
+                FROM limit_stats
                 ORDER BY trade_date DESC 
                 LIMIT 1
             """
@@ -1018,30 +1044,69 @@ class QuotesManager:
             last_date = cursor.fetchone()
             
             if last_date:
-                # 获取该交易日的涨停股票
+                trade_date = last_date[0]
+                
+                # 获取统计数据 - 修改SQL以匹配表结构
+                sql_stats = """
+                    SELECT item, count 
+                    FROM limit_stats 
+                    WHERE trade_date = %s
+                """
+                cursor.execute(sql_stats, (trade_date,))
+                stats_results = cursor.fetchall()
+                
+                # 映射数据库字段到统计数据
+                stats_mapping = {
+                    'broken_count': 'broken_count',
+                    'consecutive_count': 'consecutive_count',
+                    'down_count': 'down_count',
+                    'limit_down_count': 'limit_down_count',
+                    'limit_up_count': 'limit_up_count',
+                    'up_count': 'up_count'
+                }
+                
+                # 更新统计数据
+                for item, count in stats_results:
+                    if item in stats_mapping:
+                        stat_name = stats_mapping[item]
+                        self.last_trade_date_stats[stat_name] = int(count)
+                self.last_trade_date_stats['trade_date'] = trade_date
+                
+                # 获取涨停股票列表
                 sql_limits = """
                     SELECT ts_code 
                     FROM limit_stocks
                     WHERE trade_date = %s 
-                    AND limit_type = 'U'  # 修改这里，使用 limit_type = 'U' 表示涨停
+                    AND limit_type = 'U'
                 """
-                cursor.execute(sql_limits, (last_date[0],))
-                results = cursor.fetchall()
+                cursor.execute(sql_limits, (trade_date,))
+                limits_results = cursor.fetchall()
                 
                 # 存储涨停股票代码
-                self.last_trade_date_limits = {row[0] for row in results}
-                log(f"成功加载上一交易日({last_date[0]})涨停股票: {len(self.last_trade_date_limits)}只")
+                self.last_trade_date_limits = {row[0] for row in limits_results}
+                
+                log(f"成功加载上一交易日({trade_date})数据:")
+                log(f"涨停: {self.last_trade_date_stats['limit_up_count']}只")
+                log(f"跌停: {self.last_trade_date_stats['limit_down_count']}只")
+                log(f"炸板: {self.last_trade_date_stats['broken_count']}只")
+                log(f"连板: {self.last_trade_date_stats['consecutive_count']}只")
+                log(f"上涨: {self.last_trade_date_stats['up_count']}家")
+                log(f"下跌: {self.last_trade_date_stats['down_count']}家")
                 
             else:
                 log("未找到上一交易日数据")
                 
         except Exception as e:
-            log(f"初始化上一交易日涨停股票失败: {str(e)}")
+            log(f"初始化上一交易日数据失败: {str(e)}")
         finally:
             if 'cursor' in locals():
                 cursor.close()
             if 'conn' in locals():
                 conn.close()
+
+    def get_last_trade_date_stats(self):
+        """获取上一个交易日的统计数据"""
+        return self.last_trade_date_stats
 
     def get_limit_up_stocks(self):
         """获取当前涨停股票列表"""
@@ -1120,10 +1185,10 @@ def normalize_concept(concept):
     if concept in CONCEPT_BLACKLIST:
         return None
         
-    # 查找并返回规范化的概念名称
-    for normalized, keywords in CONCEPT_MAPPING.items():
-        if any(keyword in concept for keyword in keywords):
-            return normalized
+    # # 查找并返回规范化的概念名称
+    # for normalized, keywords in CONCEPT_MAPPING.items():
+    #     if any(keyword in concept for keyword in keywords):
+    #         return normalized
     return concept
 
 # 如果直接运行此文件，则启动独立进程

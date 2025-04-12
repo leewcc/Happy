@@ -212,4 +212,53 @@
 .table th:nth-child(2),
 .table td:nth-child(2) {
     text-align: right;
+}
+
+.limit-stats-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    padding: 10px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 10px 20px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-value-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.stat-last-value {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.stat-change {
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.stat-change.increase {
+    color: #f55;
+}
+
+.stat-change.decrease {
+    color: #0c0;
 } 

@@ -69,11 +69,7 @@ function initLimitAnalysis() {
             }
 
             // 更新统计数据
-            $('#limit-up-count').text(data.statistics.limit_up_count || 0);
-            $('#gem-limit-up-count').text(data.statistics.gem_limit_up_count || 0);
-            $('#broken-limit-count').text(data.statistics.broken_limit_count || 0);
-            $('#limit-down-count').text(data.statistics.limit_down_count || 0);
-            $('#continuous-limit-count').text(data.statistics.continuous_limit_count || 0);
+            updateLimitStats(data.statistics, data.last_trade_date_stats);
 
             // 更新表格数据
             conceptStatsTable.setData(data.concept_stats || []);
@@ -88,6 +84,48 @@ function initLimitAnalysis() {
 
     // 设置定时刷新
     setInterval(updateLimitAnalysis, 10000);
+}
+
+function updateLimitStats(currentStats, lastStats) {
+    // 更新涨停统计
+    $('#limit-up-count').text(currentStats.limit_up_count);
+    $('#last-limit-up-count').text(`昨日: ${lastStats.limit_up_count}`);
+    addChangeIndicator('limit-up-count', currentStats.limit_up_count, lastStats.limit_up_count);
+
+    // 更新创业板涨停统计
+    $('#gem-limit-up-count').text(currentStats.gem_limit_up_count);
+    $('#last-gem-limit-up-count').text(`昨日: ${lastStats.gem_limit_up_count || 0}`);
+    addChangeIndicator('gem-limit-up-count', currentStats.gem_limit_up_count, lastStats.gem_limit_up_count || 0);
+
+    // 更新炸板统计
+    $('#broken-limit-count').text(currentStats.broken_limit_count);
+    $('#last-broken-count').text(`昨日: ${lastStats.broken_count}`);
+    addChangeIndicator('broken-limit-count', currentStats.broken_limit_count, lastStats.broken_count);
+
+    // 更新跌停统计
+    $('#limit-down-count').text(currentStats.limit_down_count);
+    $('#last-limit-down-count').text(`昨日: ${lastStats.limit_down_count}`);
+    addChangeIndicator('limit-down-count', currentStats.limit_down_count, lastStats.limit_down_count);
+
+    // 更新连板统计
+    $('#continuous-limit-count').text(currentStats.continuous_limit_count);
+    $('#last-consecutive-count').text(`昨日: ${lastStats.consecutive_count}`);
+    addChangeIndicator('continuous-limit-count', currentStats.continuous_limit_count, lastStats.consecutive_count);
+}
+
+function addChangeIndicator(elementId, currentValue, lastValue) {
+    const diff = currentValue - lastValue;
+    const element = $(`#${elementId}`);
+    
+    // 移除旧的变化指示器
+    element.siblings('.stat-change').remove();
+    
+    if (diff !== 0) {
+        const changeHtml = `<div class="stat-change ${diff > 0 ? 'increase' : 'decrease'}">
+            ${diff > 0 ? '↑' : '↓'} ${Math.abs(diff)}
+        </div>`;
+        element.after(changeHtml);
+    }
 }
 
 // 页面加载完成后初始化

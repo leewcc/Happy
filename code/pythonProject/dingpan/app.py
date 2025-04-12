@@ -89,6 +89,7 @@ def limit_up_analysis():
     try:
         market_stats = quotes_manager.get_market_stats()
         concept_stats = quotes_manager.get_concept_stats()
+        last_trade_date_stats = quotes_manager.get_last_trade_date_stats()
         
         print("市场统计数据:", market_stats)  # 添加调试日志
         print("概念统计数据:", concept_stats)  # 添加调试日志
@@ -114,7 +115,7 @@ def limit_up_analysis():
             concept_summary.append({
                 'concept': concept,
                 'limit_up_count': stats['limit_up_count'],
-                'continuous_count': len([s for s in stats['stocks']['limit_ups'] 
+                'continuous_count': len([s for s in stats['limit_ups'] 
                                       if s['ts_code'] in market_stats.get('limit_ups', {}) 
                                       and market_stats['limit_ups'][s['ts_code']]['is_continuous']]),
                 'broken_count': stats['broken_limit_count'],
@@ -129,6 +130,7 @@ def limit_up_analysis():
                 'limit_down_count': market_stats.get('limit_down_count', 0),
                 'continuous_limit_count': market_stats.get('continuous_limit_count', 0)
             },
+            'last_trade_date_stats': last_trade_date_stats,  # 添加昨日统计数据
             'concept_stats': concept_summary,
             'limit_stocks': limit_up_stocks
         }
