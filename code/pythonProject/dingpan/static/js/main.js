@@ -1,58 +1,120 @@
 $(document).ready(function() {
+    console.log('页面初始化开始');
+    
     // 从 localStorage 获取上次访问的页面
     const lastTab = localStorage.getItem('currentTab') || 'rank';
+    console.log('上次访问的页面:', lastTab);
     
     // 激活对应的导航项
     $(`.nav-link[data-tab="${lastTab}"]`).addClass('active');
+    console.log('当前激活的导航项:', $(`.nav-link[data-tab="${lastTab}"]`).length);
     
     // 显示对应的页面内容
     $('.page-content').hide();
     $(`#${lastTab}-page`).show();
+    console.log('显示的页面元素:', $(`#${lastTab}-page`).length);
     
-    // 如果是涨停分析页面，初始化数据
-    if(lastTab === 'limit') {
-        initLimitAnalysis();
-    }
+    // 初始加载数据
+    loadData(lastTab);
+    console.log('初始加载页面:', lastTab);
     
-    // 页面切换处理
-    $('.nav-link').click(function(e) {
+    // 检查导航链接是否存在
+    console.log('找到的导航链接数量:', $('.nav-link').length);
+    
+    // 使用事件委托绑定点击事件
+    $(document).on('click', '.nav-link', function(e) {
+        console.log('导航链接被点击 - 事件委托');
         e.preventDefault();
-        const tabId = $(this).data('tab');
+        const tab = $(this).data('tab');
+        console.log('点击的链接:', $(this).text());
+        console.log('tab值:', tab);
         
         // 保存当前页面到 localStorage
-        localStorage.setItem('currentTab', tabId);
+        localStorage.setItem('currentTab', tab);
         
-        // 切换导航激活状态
+        // 更新导航项状态
         $('.nav-link').removeClass('active');
         $(this).addClass('active');
         
         // 切换页面内容
         $('.page-content').hide();
-        $(`#${tabId}-page`).show();
+        $(`#${tab}-page`).show();
+        console.log('切换后显示的页面元素:', $(`#${tab}-page`).length);
         
-        // 如果切换到涨停分析页面，初始化数据
-        if(tabId === 'limit') {
-            initLimitAnalysis();
-        }
+        // 加载对应页面的数据
+        loadData(tab);
+        console.log('加载新页面:', tab);
+    });
+
+    // 直接绑定点击事件作为备选
+    $('.nav-link').click(function(e) {
+        console.log('导航链接被点击 - 直接绑定');
+    });
+
+    // 添加鼠标移入事件检查元素是否存在
+    $('.nav-link').hover(function() {
+        console.log('鼠标移入导航链接:', $(this).text());
+        console.log('该元素的data-tab值:', $(this).data('tab'));
+    });
+
+    // 检查页面结构
+    console.log('页面内容元素:');
+    $('.page-content').each(function() {
+        console.log('- ID:', $(this).attr('id'));
+        console.log('- 显示状态:', $(this).css('display'));
+    });
+
+    // 检查导航栏结构
+    console.log('导航栏结构:');
+    $('.navbar-nav').each(function() {
+        console.log('导航栏项目数量:', $(this).find('.nav-item').length);
+        $(this).find('.nav-link').each(function() {
+            console.log('- 链接文本:', $(this).text());
+            console.log('- data-tab:', $(this).data('tab'));
+            console.log('- href:', $(this).attr('href'));
+        });
     });
 
     // 定时刷新数据
     setInterval(function() {
         const activeTab = $('.nav-link.active').data('tab');
+        console.log('定时刷新当前页面:', activeTab);
         loadData(activeTab);
     }, 60000);  // 每分钟刷新一次
 
-    // 初始加载
-    loadData(lastTab);
+    console.log('页面初始化完成');
 });
 
+// 检查页面元素
+function checkPageElements() {
+    console.log('导航链接数量:', $('.nav-link').length);
+    $('.nav-link').each(function() {
+        console.log('导航链接:', $(this).text(), '数据标签:', $(this).data('tab'));
+    });
+    
+    console.log('页面内容数量:', $('.page-content').length);
+    $('.page-content').each(function() {
+        console.log('页面内容ID:', $(this).attr('id'));
+    });
+}
+
+// 在页面加载完成后检查元素
+$(document).ready(function() {
+    console.log('开始检查页面元素');
+    checkPageElements();
+});
+
+// 加载页面数据
 function loadData(tab) {
+    console.log('loadData被调用，tab:', tab);
     switch(tab) {
         case 'rank':
+            console.log('加载涨跌排行数据');
             loadMarketOverview();
             loadStockList();
             break;
         case 'limit':
+            console.log('加载涨停分析数据');
             if(typeof initLimitAnalysis === 'function') {
                 initLimitAnalysis();
             } else {
@@ -60,8 +122,11 @@ function loadData(tab) {
             }
             break;
         case 'sector':
+            console.log('加载板块地图数据');
             loadSectorMap();
             break;
+        default:
+            console.warn('未知的页面类型:', tab);
     }
 }
 

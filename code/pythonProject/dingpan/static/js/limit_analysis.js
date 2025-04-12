@@ -116,42 +116,63 @@ function initLimitAnalysis() {
 
     // 处理股票类型过滤
     function updateStockFilter() {
-        const filters = [];
-        if($('#filter-limit-up').prop('checked')) filters.push('limit_up');
-        if($('#filter-broken').prop('checked')) filters.push('broken');
-        if($('#filter-continuous').prop('checked')) filters.push('continuous');
-        if($('#filter-limit-down').prop('checked')) filters.push('limit_down');
-        
-        // 更新表格过滤器
-        limitStocksTable.setFilter(function(data) {
-            // 如果没有选择任何过滤器，显示所有数据
-            if (filters.length === 0) return true;
+        try {
+            console.log('开始更新股票过滤器');
+            const filters = [];
+            if($('#filter-limit-up').prop('checked')) filters.push('limit_up');
+            if($('#filter-broken').prop('checked')) filters.push('broken');
+            if($('#filter-continuous').prop('checked')) filters.push('continuous');
+            if($('#filter-limit-down').prop('checked')) filters.push('limit_down');
             
-            return filters.some(type => {
-                switch(type) {
-                    case 'limit_up': return data.type === 'limit_up';
-                    case 'broken': return data.type === 'broken';
-                    case 'continuous': return data.continuous_days > 1;
-                    case 'limit_down': return data.type === 'limit_down';
-                }
+            console.log('选中的过滤器:', filters);
+            
+            // 更新表格过滤器
+            limitStocksTable.setFilter(function(data) {
+                // 如果没有选择任何过滤器，显示所有数据
+                if (filters.length === 0) return true;
+                
+                return filters.some(type => {
+                    switch(type) {
+                        case 'limit_up': return data.type === 'limit_up';
+                        case 'broken': return data.type === 'broken';
+                        case 'continuous': return data.continuous_days > 1;
+                        case 'limit_down': return data.type === 'limit_down';
+                    }
+                });
             });
-        });
 
-        // 手动触发 dataFiltered 回调来更新记录数
-        const filteredData = limitStocksTable.getData("active");  // 获取过滤后的数据
-        document.getElementById('total-records').textContent = filteredData.length;
+            // 手动触发 dataFiltered 回调来更新记录数
+            const filteredData = limitStocksTable.getData("active");
+            const totalRecordsElement = document.getElementById('total-records');
+            
+            // 检查元素是否存在
+            if (totalRecordsElement) {
+                console.log('更新记录数:', filteredData.length);
+                totalRecordsElement.textContent = filteredData.length;
+            } else {
+                console.warn('未找到total-records元素');
+            }
+            
+        } catch (error) {
+            console.error('更新过滤器时出错:', error);
+        }
     }
 
     // 初始化时设置默认过滤器
     function initStockFilter() {
-        // 默认全部勾选
-        $('#filter-limit-up').prop('checked', true);
-        $('#filter-broken').prop('checked', true);
-        $('#filter-continuous').prop('checked', true);
-        $('#filter-limit-down').prop('checked', true);
-        
-        // 应用过滤器
-        updateStockFilter();
+        try {
+            console.log('初始化股票过滤器');
+            // 默认全部勾选
+            $('#filter-limit-up').prop('checked', true);
+            $('#filter-broken').prop('checked', true);
+            $('#filter-continuous').prop('checked', true);
+            $('#filter-limit-down').prop('checked', true);
+            
+            // 应用过滤器
+            updateStockFilter();
+        } catch (error) {
+            console.error('初始化过滤器时出错:', error);
+        }
     }
 
     // 绑定过滤器事件
