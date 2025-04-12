@@ -136,6 +136,10 @@ function initLimitAnalysis() {
                 }
             });
         });
+
+        // 手动触发 dataFiltered 回调来更新记录数
+        const filteredData = limitStocksTable.getData("active");  // 获取过滤后的数据
+        document.getElementById('total-records').textContent = filteredData.length;
     }
 
     // 初始化时设置默认过滤器
