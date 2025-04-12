@@ -762,9 +762,6 @@ class QuotesManager:
             # 清空概念统计数据
             temp_concept_stats = {}
             
-            # 添加调试日志
-            log("开始更新概念统计数据...")
-            
             # 先处理概念统计
             for quote in self.quotes_data:
                 ts_code = quote['ts_code']
@@ -786,9 +783,6 @@ class QuotesManager:
                 concepts = quote['concepts'].split(',') if quote['concepts'] != '-' else []
                 
                 # 添加调试日志
-                if is_up_limit or is_down_limit:
-                    log(f"股票 {ts_code}({name}) 的概念列表: {concepts}")
-                
                 for concept in concepts:
                     concept = concept.strip()
                     if not concept:
@@ -831,7 +825,6 @@ class QuotesManager:
                         })
 
             # 打印概念统计结果
-            log("\n概念统计结果:")
             
             # 对概念统计进行排序，只保留有涨停的概念
             sorted_concepts = sorted(
@@ -854,16 +847,6 @@ class QuotesManager:
                     'non_main_limit_up_count': len(stats['non_main_limit_ups'])
                 }
                 
-                # 打印统计信息
-                log(f"\n概念: {concept}")
-                log(f"涨停数: {len(stats['limit_ups'])} - {[s['name'] for s in stats['limit_ups']]}")
-                if len(stats['limit_downs']) > 0:
-                    log(f"跌停数: {len(stats['limit_downs'])} - {[s['name'] for s in stats['limit_downs']]}")
-                if len(stats['broken_limits']) > 0:
-                    log(f"炸板数: {len(stats['broken_limits'])} - {[s['name'] for s in stats['broken_limits']]}")
-                if len(stats['non_main_limit_ups']) > 0:
-                    log(f"非主板涨停数: {len(stats['non_main_limit_ups'])} - {[s['name'] for s in stats['non_main_limit_ups']]}")
-
             # 更新概念统计数据（使用排序后的数据）
             self.concept_stats = sorted_concept_stats
             
@@ -1012,7 +995,6 @@ class QuotesManager:
     def get_market_stats(self):
         """获取市场统计数据"""
         try:
-            print("当前市场统计数据:", self.market_stats)  # 添加调试日志
             return self.market_stats
         except Exception as e:
             log(f"获取市场统计失败: {str(e)}")
@@ -1021,7 +1003,6 @@ class QuotesManager:
     def get_concept_stats(self):
         """获取概念维度统计数据"""
         try:
-            print("当前概念统计数据:", self.concept_stats)  # 添加调试日志
             return self.market_stats.get('concept_stats', {})
         except Exception as e:
             log(f"获取概念统计失败: {str(e)}")

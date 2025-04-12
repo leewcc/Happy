@@ -4,6 +4,15 @@ function initLimitAnalysis() {
     const limitStocksTable = new Tabulator("#limit-stocks-table", {
         height: "100%",  // 改为100%以充满容器
         layout: "fitColumns",
+        footerElement: "<div class='tabulator-footer-records'>共 <span id='total-records'>0</span> 条记录</div>",
+        dataFiltered: function(filters, rows) {
+            console.log('过滤后的记录数:', rows.length);  // 添加调试日志
+            document.getElementById('total-records').textContent = rows.length;
+        },
+        dataLoaded: function(data) {
+            console.log('加载的数据条数:', data.length);  // 添加调试日志
+            document.getElementById('total-records').textContent = data.length;
+        },
         columns: [
             {title: "股票名称", field: "name", sorter: "string"},
             {title: "涨幅", field: "change_pct", sorter: "number", formatter: "number", formatterParams: {precision: 2}},
@@ -115,15 +124,30 @@ function initLimitAnalysis() {
         
         // 更新表格过滤器
         limitStocksTable.setFilter(function(data) {
+            // 如果没有选择任何过滤器，显示所有数据
+            if (filters.length === 0) return true;
+            
             return filters.some(type => {
                 switch(type) {
-                    case 'limit_up': return data.change_pct >= 9.8;
-                    case 'broken': return data.is_broken;
+                    case 'limit_up': return data.type === 'limit_up';
+                    case 'broken': return data.type === 'broken';
                     case 'continuous': return data.continuous_days > 1;
-                    case 'limit_down': return data.change_pct <= -9.8;
+                    case 'limit_down': return data.type === 'limit_down';
                 }
             });
         });
+    }
+
+    // 初始化时设置默认过滤器
+    function initStockFilter() {
+        // 默认全部勾选
+        $('#filter-limit-up').prop('checked', true);
+        $('#filter-broken').prop('checked', true);
+        $('#filter-continuous').prop('checked', true);
+        $('#filter-limit-down').prop('checked', true);
+        
+        // 应用过滤器
+        updateStockFilter();
     }
 
     // 绑定过滤器事件
@@ -143,8 +167,17 @@ function initLimitAnalysis() {
             updateLimitStats(data.statistics, data.last_trade_date_stats);
 
             // 更新表格数据
+            if (data.limit_stocks && data.limit_stocks.length > 0) {
+                console.log('更新表格数据，共', data.limit_stocks.length, '条记录');
+                limitStocksTable.setData(data.limit_stocks).then(() => {
+                    // 数据加载完成后更新记录数
+                    const totalRows = limitStocksTable.getDataCount();
+                    console.log('表格实际显示记录数:', totalRows);
+                    document.getElementById('total-records').textContent = totalRows;
+                });
+            }
+            
             conceptStatsTable.setData(data.concept_stats || []);
-            limitStocksTable.setData(data.limit_stocks || []);
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.error('请求失败:', textStatus, errorThrown);
         });
@@ -155,6 +188,9 @@ function initLimitAnalysis() {
 
     // 设置定时刷新
     setInterval(updateLimitAnalysis, 10000);
+
+    // 在表格初始化后调用
+    initStockFilter();
 }
 
 function updateLimitStats(currentStats, lastStats) {

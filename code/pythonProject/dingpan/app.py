@@ -91,24 +91,57 @@ def limit_up_analysis():
         concept_stats = quotes_manager.get_concept_stats()
         last_trade_date_stats = quotes_manager.get_last_trade_date_stats()
         
-        print("市场统计数据:", market_stats)  # 添加调试日志
-        print("概念统计数据:", concept_stats)  # 添加调试日志
         
-        # 获取涨停股票列表
-        limit_up_stocks = []
+        # 获取所有相关股票列表
+        stocks_list = []
+        
+        # 添加涨停股票
         for ts_code, stock in market_stats.get('limit_ups', {}).items():
-            limit_up_stocks.append({
+            stocks_list.append({
                 'ts_code': ts_code,
                 'name': stock['name'],
                 'change_pct': stock['change_pct'],
                 'continuous_days': 1 + (1 if stock['is_continuous'] else 0),
                 'first_limit_time': stock.get('first_limit_time', '-'),
-                'amount': stock['amount'] / 100000000,  # 转换为亿
+                'amount': stock['amount'] / 100000000,
                 'industry': stock['industry'],
                 'concepts': stock['concepts'],
-                'is_broken': ts_code in market_stats.get('broken_limits', {})
+                'type': 'limit_up',
+                'is_broken': False
             })
-        
+            
+        # 添加炸板股票
+        for ts_code, stock in market_stats.get('broken_limits', {}).items():
+            if ts_code not in [s['ts_code'] for s in stocks_list]:  # 避免重复
+                stocks_list.append({
+                    'ts_code': ts_code,
+                    'name': stock['name'],
+                    'change_pct': stock['change_pct'],
+                    'continuous_days': 0,
+                    'first_limit_time': stock.get('first_limit_time', '-'),
+                    'amount': stock['amount'] / 100000000,
+                    'industry': stock['industry'],
+                    'concepts': stock['concepts'],
+                    'type': 'broken',
+                    'is_broken': True
+                })
+                
+        # 添加跌停股票
+        for ts_code, stock in market_stats.get('limit_downs', {}).items():
+            if ts_code not in [s['ts_code'] for s in stocks_list]:  # 避免重复
+                stocks_list.append({
+                    'ts_code': ts_code,
+                    'name': stock['name'],
+                    'change_pct': stock['change_pct'],
+                    'continuous_days': 0,
+                    'first_limit_time': '-',
+                    'amount': stock['amount'] / 100000000,
+                    'industry': stock['industry'],
+                    'concepts': stock['concepts'],
+                    'type': 'limit_down',
+                    'is_broken': False
+                })
+
         # 获取概念统计
         concept_summary = []
         for concept, stats in concept_stats.items():
@@ -135,12 +168,11 @@ def limit_up_analysis():
                 'limit_down_count': market_stats.get('limit_down_count', 0),
                 'continuous_limit_count': market_stats.get('continuous_limit_count', 0)
             },
-            'last_trade_date_stats': last_trade_date_stats,  # 添加昨日统计数据
+            'last_trade_date_stats': last_trade_date_stats,
             'concept_stats': concept_summary,
-            'limit_stocks': limit_up_stocks
+            'limit_stocks': stocks_list  # 包含所有涨停、跌停、炸板股票
         }
         
-        print("返回数据:", response_data)  # 添加调试日志
         return jsonify(response_data)
         
     except Exception as e:

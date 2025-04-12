@@ -420,4 +420,13 @@
 /* 按钮悬停效果 */
 .btn-close:hover {
     background-color: #e9ecef;
+}
+
+/* 表格底部记录数样式 */
+.tabulator-footer-records {
+    padding: 5px 10px;
+    text-align: right;
+    color: #666;
+    font-size: 12px;
+    border-top: 1px solid #dee2e6;
 } 
