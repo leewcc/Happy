@@ -97,6 +97,7 @@ def limit_up_analysis():
         
         # 添加涨停股票
         for ts_code, stock in market_stats.get('limit_ups', {}).items():
+            print(f"涨停股票: {stock}")
             stocks_list.append({
                 'ts_code': ts_code,
                 'name': stock['name'],

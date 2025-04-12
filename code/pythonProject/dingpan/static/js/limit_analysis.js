@@ -55,7 +55,7 @@ function initLimitAnalysis() {
                 width: 100,
                 sorter: "number",
                 formatter: function(cell) {
-                    return (cell.getValue() / 100000000).toFixed(2);
+                    return (cell.getValue()).toFixed(2);
                 }
             },
             {
@@ -74,9 +74,9 @@ function initLimitAnalysis() {
                         `<span class="concept-tag">${concept.trim()}</span>`
                     ).join(' ');
                 },
-                width: "auto",  // 自动占用剩余宽度
+                widthGrow: 3,  // 让概念列占用更多的剩余空间
                 responsive: 0,  // 永不隐藏
-                cssClass: "wrap-text"  // 添加自定义CSS类
+                cssClass: "wrap-text concept-cell"  // 添加 concept-cell 类
             }
         ],
         rowClick: function(e, row) {
@@ -427,6 +427,12 @@ style.textContent = `
         color: #f55;
         font-weight: bold;
     }
+    .concept-cell {
+        overflow-wrap: break-word;  /* 允许在任意字符间换行 */
+        word-wrap: break-word;  /* 兼容性写法 */
+        word-break: break-all;  /* 允许在单词内换行 */
+        flex-grow: 1;  /* 允许单元格伸展 */
+    }
     .concept-tag {
         display: inline-block;
         padding: 2px 6px;
@@ -435,14 +441,16 @@ style.textContent = `
         border-radius: 4px;
         font-size: 12px;
         white-space: normal;  /* 允许换行 */
+        box-sizing: border-box;  /* 包含内边距和边框 */
     }
     .wrap-text {
         white-space: normal !important;  /* 强制允许换行 */
-        min-width: 200px;  /* 设置最小宽度 */
+        height: auto !important;  /* 允许高度自适应 */
     }
     .tabulator-cell {
         height: auto !important;  /* 允许单元格高度自适应 */
         padding: 8px !important;  /* 增加一些内边距 */
+        vertical-align: top !important;  /* 顶部对齐 */
     }
     .tabulator-footer-records {
         padding: 10px;

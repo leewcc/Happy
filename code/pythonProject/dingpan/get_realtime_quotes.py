@@ -634,7 +634,6 @@ class QuotesManager:
         """获取单个指数行情"""
         try:
             df = ts.realtime_quote(code)
-            log(f"处理指数 {df} 数据")
             if df is not None and not df.empty:
                 try:
                     price = float(df['PRICE'].iloc[0])
@@ -713,7 +712,6 @@ class QuotesManager:
                 if is_up_limit:
                     limit_up_count += 1
                     current_limits.add(ts_code)
-                    
                     # 存储涨停股票信息
                     temp_limit_ups[ts_code] = {
                         'name': name,
