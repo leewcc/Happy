@@ -149,25 +149,54 @@ function initLimitAnalysis() {
             {column: "limit_up_count", dir: "desc"}
         ],
         rowHeight: 24,
-        headerHeight: 24
+        headerHeight: 24,
+        rowFormatter: function(row) {
+            // 为每一行添加点击样式
+            row.getElement().style.cursor = 'pointer';
+            // 绑定点击事件
+            row.getElement().addEventListener('click', function() {
+                const conceptData = row.getData();
+                showConceptDetail(conceptData);
+            });
+        }
     });
 
     // 处理侧边栏显示/隐藏
     function toggleConceptStats() {
-        $('#concept-stats-sidebar').toggleClass('show');
+        console.log('切换概念统计显示状态');  // 添加调试日志
+        const sidebar = $('#concept-stats-sidebar');
+        sidebar.toggleClass('show');
+        
+        // 如果侧边栏变为可见，重新调整表格大小
+        if(sidebar.hasClass('show')) {
+            conceptStatsTable.redraw(true);
+        }
     }
 
-    // 按钮点击事件
-    $('#toggle-concept-stats').click(toggleConceptStats);
-    $('#close-concept-stats').click(toggleConceptStats);
-
-    // 添加快捷键支持
-    $(document).keydown(function(e) {
-        // Alt + D
-        if (e.altKey && e.keyCode === 68) {
-            e.preventDefault(); // 阻止默认行为
+    // 绑定按钮点击事件
+    $(document).ready(function() {
+        // 使用事件委托绑定点击事件
+        $(document).on('click', '#toggle-concept-stats', function(e) {
+            e.preventDefault();
+            console.log('概念统计按钮被点击');  // 添加调试日志
             toggleConceptStats();
-        }
+        });
+
+        $(document).on('click', '#close-concept-stats', function(e) {
+            e.preventDefault();
+            console.log('关闭概念统计按钮被点击');  // 添加调试日志
+            toggleConceptStats();
+        });
+
+        // 添加快捷键支持
+        $(document).on('keydown', function(e) {
+            // Alt + D
+            if (e.altKey && e.keyCode === 68) {
+                e.preventDefault(); // 阻止默认行为
+                console.log('快捷键 Alt+D 被触发');  // 添加调试日志
+                toggleConceptStats();
+            }
+        });
     });
 
     // 处理概念统计显示切换
@@ -240,10 +269,10 @@ function initLimitAnalysis() {
     // 绑定过滤器事件
     $('.stock-type-filter input').change(updateStockFilter);
 
-    // 定时更新数据
-    function updateLimitAnalysis() {
+    // 将 updateLimitAnalysis 函数移到全局作用域
+    window.updateLimitAnalysis = function() {
         $.get('/api/limit_up_analysis', function(data) {
-            console.log('涨停分析数据:', data);  // 添加调试日志
+            console.log('涨停分析数据:', data);
             
             if(!data || data.error) {
                 console.error('获取数据失败:', data.error);
@@ -264,11 +293,15 @@ function initLimitAnalysis() {
                 });
             }
             
-            conceptStatsTable.setData(data.concept_stats || []);
+            // 更新概念统计表格数据
+            if (data.concept_stats) {
+                conceptStatsTable.setData(data.concept_stats);
+            }
+
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.error('请求失败:', textStatus, errorThrown);
         });
-    }
+    };
 
     // 首次加载数据
     updateLimitAnalysis();
@@ -417,4 +450,45 @@ style.textContent = `
         color: #666;
     }
 `;
-document.head.appendChild(style); 
+document.head.appendChild(style);
+
+// 添加相关的CSS样式
+const sidebarStyle = document.createElement('style');
+sidebarStyle.textContent = `
+    #concept-stats-sidebar {
+        position: fixed;
+        top: 0;
+        right: -400px;
+        width: 400px;
+        height: 100vh;
+        background: #fff;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        transition: right 0.3s ease;
+        z-index: 1050;
+    }
+    
+    #concept-stats-sidebar.show {
+        right: 0;
+    }
+    
+    .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .sidebar-content {
+        padding: 1rem;
+        height: calc(100% - 60px);
+        overflow-y: auto;
+    }
+    
+    .shortcut-tip {
+        font-size: 12px;
+        color: #666;
+        margin-right: 10px;
+    }
+`;
+document.head.appendChild(sidebarStyle); 

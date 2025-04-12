@@ -79,7 +79,13 @@ $(document).ready(function() {
     setInterval(function() {
         const activeTab = $('.nav-link.active').data('tab');
         console.log('定时刷新当前页面:', activeTab);
-        loadData(activeTab);
+        
+        // 如果当前是涨停分析页面，直接调用更新函数
+        if (activeTab === 'limit' && typeof updateLimitAnalysis === 'function') {
+            updateLimitAnalysis();
+        } else {
+            loadData(activeTab);
+        }
     }, 10000);  // 每分钟刷新一次
 
     console.log('页面初始化完成');
@@ -115,10 +121,10 @@ function loadData(tab) {
             break;
         case 'limit':
             console.log('加载涨停分析数据');
-            if(typeof initLimitAnalysis === 'function') {
-                initLimitAnalysis();
+            if(typeof updateLimitAnalysis === 'function') {
+                updateLimitAnalysis();
             } else {
-                console.error('initLimitAnalysis function not found');
+                console.error('updateLimitAnalysis function not found');
             }
             break;
         case 'sector':
