@@ -148,6 +148,16 @@ def stock_kline(ts_code):
     stock_code = ts_code[:6]
     print(f"\n开始获取股票 {ts_code} (代码: {stock_code}) 的K线数据...")
     
+    # 从内存中获取行业和概念信息
+    stock_info = {'industry': '-', 'concepts': '-'}
+    for quote in quotes_manager.quotes_data:
+        if quote['ts_code'] == ts_code:
+            stock_info = {
+                'industry': quote.get('industry', '-'),
+                'concepts': quote.get('concepts', '-').split(',')  # 转换为列表
+            }
+            break
+    
     conn = get_db_connection()
     cursor = conn.cursor(pymysql.cursors.DictCursor)
     try:
@@ -248,13 +258,22 @@ def stock_kline(ts_code):
         else:
             print("未获取到K线数据")
         
-        return jsonify(kline_df.to_dict('records'))
+        # 在返回数据时添加行业和概念信息
+        response_data = {
+            'kline': kline_df.to_dict('records'),
+            'industry': stock_info['industry'],
+            'concepts': stock_info['concepts']
+        }
+        
+        return jsonify(response_data)
         
     except Exception as e:
         print(f"获取K线数据失败: {str(e)}")
-        print(f"SQL语句: {kline_sql}")
-        print(f"股票代码: {stock_code}")
-        return jsonify([])
+        return jsonify({
+            'kline': [],
+            'industry': '-',
+            'concepts': []
+        })
     finally:
         cursor.close()
         conn.close()
