@@ -865,10 +865,10 @@ class QuotesManager:
                 'kc_limit_up_count': kc_limit_up_count,
                 'broken_limit_count': broken_limit_count,
                 'continuous_limit_count': continuous_limit_count,
-                'limit_ups': self.current_limit_ups,
-                'limit_downs': self.current_limit_downs,
-                'broken_limits': self.current_broken_limits,
-                'concept_stats': self.concept_stats,  # 使用排序后的概念统计
+                'limit_ups': temp_limit_ups,
+                'limit_downs': temp_limit_downs,
+                'broken_limits': temp_broken_limits,  # 使用临时变量更新炸板数据
+                'concept_stats': self.concept_stats,
                 'stocks': [{
                     'ts_code': quote['ts_code'],
                     'change_pct': quote['change_pct']
@@ -881,6 +881,9 @@ class QuotesManager:
                 'cyb_amount': self.index_data.get('399006.SZ', {}).get('amount', 0)
             }
 
+            # 更新当前炸板记录
+            self.current_broken_limits = temp_broken_limits.copy()
+            
             # 更新上一次涨停记录
             self.previous_limits = current_limits
             
