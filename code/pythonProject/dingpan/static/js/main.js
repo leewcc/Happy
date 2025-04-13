@@ -364,6 +364,11 @@ function updateStockList(stocks) {
         const bidAmount = stock.bid_amount ? (stock.bid_amount/100000000).toFixed(2) : '0.00';
         const nonBidAmount = stock.non_bid_amount ? (stock.non_bid_amount/100000000).toFixed(2) : '0.00';
         
+        // 处理概念标签的展示，使用rank-前缀的类名
+        const concepts = stock.concepts ? stock.concepts.split(',').map(concept => 
+            `<span class="rank-concept-tag">${concept.trim()}</span>`
+        ).join('') : '-';
+        
         html += `
             <tr data-ts-code="${stock.ts_code}">
                 <td>${stock.name || '-'}</td>
@@ -372,7 +377,7 @@ function updateStockList(stocks) {
                 <td>${bidAmount}</td>
                 <td>${nonBidAmount}</td>
                 <td>${stock.industry || '-'}</td>
-                <td>${stock.concepts || '-'}</td>
+                <td class="rank-concept-cell">${concepts}</td>
             </tr>
         `;
     });
@@ -403,6 +408,35 @@ function updateStockList(stocks) {
         window.klineChart.show(tsCode, name);
     });
 }
+
+// 添加涨跌排行特定的CSS样式
+const rankStyle = document.createElement('style');
+rankStyle.textContent = `
+    .rank-concept-cell {
+        max-width: 300px;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        word-break: break-all;
+        white-space: normal;
+        line-height: 1.5;
+    }
+    
+    .rank-concept-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        margin: 2px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: normal;
+    }
+    
+    #stock-table td {
+        vertical-align: middle;
+        padding: 8px;
+    }
+`;
+document.head.appendChild(rankStyle);
 
 // 更新成交额趋势图
 function updateAmountTrend(data) {
