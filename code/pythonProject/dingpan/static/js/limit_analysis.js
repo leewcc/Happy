@@ -99,14 +99,14 @@ function initLimitAnalysis() {
 
     // 创建概念统计表格
     const conceptStatsTable = new Tabulator("#concept-stats-table", {
-        height: "auto",
-        layout: "fitData",
+        height: "100%",  // 改为100%以充满容器
+        layout: "fitColumns",  // 改为 fitColumns 使列自动填充宽度
         columns: [
             {
                 title: "概念", 
                 field: "concept", 
                 sorter: "string", 
-                width: 140,
+                width: 150,  // 固定概念列宽度
                 headerSort: true,
                 headerSortStartingDir: "desc"
             },
@@ -114,7 +114,6 @@ function initLimitAnalysis() {
                 title: "涨停", 
                 field: "limit_up_count", 
                 sorter: "number", 
-                width: 65,
                 hozAlign: "center",
                 headerSort: true,
                 headerSortStartingDir: "desc"
@@ -123,7 +122,6 @@ function initLimitAnalysis() {
                 title: "连板", 
                 field: "continuous_count", 
                 sorter: "number", 
-                width: 65,
                 hozAlign: "center",
                 headerSort: true,
                 headerSortStartingDir: "desc"
@@ -132,7 +130,6 @@ function initLimitAnalysis() {
                 title: "创业", 
                 field: "gem_limit_up_count", 
                 sorter: "number", 
-                width: 65,
                 hozAlign: "center",
                 headerSort: true,
                 headerSortStartingDir: "desc"
@@ -141,7 +138,6 @@ function initLimitAnalysis() {
                 title: "炸板", 
                 field: "broken_count", 
                 sorter: "number", 
-                width: 65,
                 hozAlign: "center",
                 headerSort: true,
                 headerSortStartingDir: "desc"
@@ -150,7 +146,6 @@ function initLimitAnalysis() {
                 title: "跌停", 
                 field: "limit_down_count", 
                 sorter: "number", 
-                width: 65,
                 hozAlign: "center",
                 headerSort: true,
                 headerSortStartingDir: "desc"
@@ -158,18 +153,7 @@ function initLimitAnalysis() {
         ],
         initialSort: [
             {column: "limit_up_count", dir: "desc"}
-        ],
-        rowHeight: 24,
-        headerHeight: 24,
-        rowFormatter: function(row) {
-            // 为每一行添加点击样式
-            row.getElement().style.cursor = 'pointer';
-            // 绑定点击事件
-            row.getElement().addEventListener('click', function() {
-                const conceptData = row.getData();
-                showConceptDetail(conceptData);
-            });
-        }
+        ]
     });
 
     // 处理侧边栏显示/隐藏
@@ -477,8 +461,8 @@ sidebarStyle.textContent = `
     #concept-stats-sidebar {
         position: fixed;
         top: 0;
-        right: -400px;
-        width: 400px;
+        right: -600px;
+        width: 600px;
         height: 100vh;
         background: #fff;
         box-shadow: -2px 0 5px rgba(0,0,0,0.1);
