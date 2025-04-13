@@ -923,7 +923,7 @@ class QuotesManager:
                     try:
                         # 查询数据库中的最新行情
                         sql = """
-                            SELECT ts_code, name, price, high, low, open, volume, amount, 
+                            SELECT ts_code, name, price, high, low, open, pre_close, volume, amount, 
                                    bid_amount, is_up_limit, is_down_limit, first_limit_up_time as first_limit_time
                             FROM realtime_quotes 
                             WHERE ts_code = %s AND trade_date = %s 
@@ -937,13 +937,8 @@ class QuotesManager:
                             # 使用数据库中的数据
                             stock_info = self.stock_info_cache.get(stock_code, {'industry': '-', 'concepts': '-'})
                             
-                            # 计算涨跌幅
-                            price = float(db_quote['price'])
-                            open_price = float(db_quote['open'])
-                            if open_price != 0:
-                                change_pct = (price - open_price) / open_price * 100
-                            else:
-                                change_pct = 0
+                            # 计算涨跌停和涨跌幅
+                            is_up_limit, is_down_limit, change_pct = calculate_limits(db_quote)
                             
                             # 处理首次涨停时间
                             first_limit_time = '-'
@@ -961,10 +956,11 @@ class QuotesManager:
                             quote = {
                                 'ts_code': stock_code,
                                 'name': db_quote['name'],
-                                'price': price,
+                                'price': float(db_quote['price']),
+                                'pre_close': float(db_quote['pre_close']),
                                 'high': float(db_quote['high']),
                                 'low': float(db_quote['low']),
-                                'open': open_price,
+                                'open': float(db_quote['open']),
                                 'volume': float(db_quote['volume']),
                                 'amount': float(db_quote['amount']),
                                 'bid_amount': float(db_quote['bid_amount']),
@@ -991,79 +987,98 @@ class QuotesManager:
                 stock_codes = ','.join(stock_codes_to_fetch)
                 df = ts.realtime_quote(stock_codes)
                 if df is not None and not df.empty:
-                    # 如果需要保存到数据库，创建连接和游标
-                    if should_save:
-                        conn = get_db_connection()
-                        cursor = conn.cursor()
-                    
-                    for _, row in df.iterrows():
-                        try:
-                            ts_code = row['TS_CODE']
-                            stock_info = self.stock_info_cache.get(ts_code, {'industry': '-', 'concepts': '-'})
+                    conn = None
+                    cursor = None
+                    try:
+                        # 如果需要保存到数据库，创建连接和游标
+                        if should_save:
+                            conn = get_db_connection()
+                            cursor = conn.cursor()
+                        
+                        for _, row in df.iterrows():
+                            try:
+                                ts_code = row['TS_CODE']
+                                stock_info = self.stock_info_cache.get(ts_code, {'industry': '-', 'concepts': '-'})
+                                
+                                # 计算涨跌停和涨跌幅
+                                is_up_limit, is_down_limit, change_pct = calculate_limits(row)
+                                
+                                # 转换金额为数值类型
+                                amount = float(row.get('AMOUNT', 0))
+                                bid_amount = float(row.get('BID_AMOUNT', 0))
+                                
+                                # 获取首次涨停时间
+                                first_limit_time = '-'
+                                for q in self.quotes_data:
+                                    if q['ts_code'] == ts_code:
+                                        first_limit_time = q.get('first_limit_time', '-')
+                                        break
+                                if first_limit_time == '-' and is_up_limit:
+                                    first_limit_time = current_time_str
+                                
+                                quote = {
+                                    'ts_code': ts_code,
+                                    'name': row['NAME'],
+                                    'price': float(row['PRICE']),
+                                    'pre_close': float(row['PRE_CLOSE']),
+                                    'high': float(row['HIGH']),
+                                    'low': float(row['LOW']),
+                                    'open': float(row['OPEN']),
+                                    'volume': float(row['VOLUME']),
+                                    'amount': amount,
+                                    'bid_amount': bid_amount,
+                                    'is_up_limit': is_up_limit,
+                                    'is_down_limit': is_down_limit,
+                                    'first_limit_time': first_limit_time,
+                                    'industry': stock_info['industry'],
+                                    'concepts': stock_info['concepts'],
+                                    'change_pct': change_pct
+                                }
+                                quotes.append(quote)
+                                
+                                # 如果是首次获取或者当前分钟是5的倍数，保存到数据库
+                                if should_save and cursor:
+                                    sql = """
+                                        INSERT INTO realtime_quotes (
+                                            ts_code, name, trade_date, trade_time, price, pre_close, high, low, 
+                                            open, volume, amount, bid_amount, is_up_limit, is_down_limit, 
+                                            first_limit_up_time
+                                        ) VALUES (
+                                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                                        )
+                                        ON DUPLICATE KEY UPDATE
+                                            price = VALUES(price),
+                                            high = VALUES(high),
+                                            low = VALUES(low),
+                                            volume = VALUES(volume),
+                                            amount = VALUES(amount),
+                                            bid_amount = VALUES(bid_amount),
+                                            is_up_limit = VALUES(is_up_limit),
+                                            is_down_limit = VALUES(is_down_limit),
+                                            first_limit_up_time = COALESCE(first_limit_up_time, VALUES(first_limit_up_time))
+                                    """
+                                    cursor.execute(sql, (
+                                        ts_code, quote['name'], today, current_time_str,
+                                        quote['price'], quote['pre_close'], quote['high'], quote['low'], quote['open'],
+                                        quote['volume'], quote['amount'], quote['bid_amount'],
+                                        quote['is_up_limit'], quote['is_down_limit'],
+                                        current_time_str if quote['first_limit_time'] != '-' else None
+                                    ))
+                                
+                            except Exception as e:
+                                log(f"处理股票 {row.get('TS_CODE', 'unknown')} 数据失败: {str(e)}")
+                                continue
+                        
+                        # 如果需要保存到数据库，提交并关闭连接
+                        if should_save and conn and cursor:
+                            conn.commit()
+                            log(f"已保存 {len(quotes)} 条行情数据到数据库")
                             
-                            # 计算涨跌停和涨跌幅
-                            is_up_limit, is_down_limit, change_pct = calculate_limits(row)
-                            
-                            # 转换金额为数值类型
-                            amount = float(row.get('AMOUNT', 0))
-                            bid_amount = float(row.get('BID_AMOUNT', 0))
-                            
-                            # 获取首次涨停时间
-                            first_limit_time = '-'
-                            for q in self.quotes_data:
-                                if q['ts_code'] == ts_code:
-                                    first_limit_time = q.get('first_limit_time', '-')
-                                    break
-                            if first_limit_time == '-' and is_up_limit:
-                                first_limit_time = current_time_str
-                            
-                            quote = {
-                                'ts_code': ts_code,
-                                'name': row['NAME'],
-                                'price': float(row['PRICE']),
-                                'high': float(row['HIGH']),
-                                'low': float(row['LOW']),
-                                'open': float(row['OPEN']),
-                                'volume': float(row['VOLUME']),
-                                'amount': amount,
-                                'bid_amount': bid_amount,
-                                'is_up_limit': is_up_limit,
-                                'is_down_limit': is_down_limit,
-                                'first_limit_time': first_limit_time,
-                                'industry': stock_info['industry'],
-                                'concepts': stock_info['concepts']
-                            }
-                            quotes.append(quote)
-                            
-                            # 如果是首次获取或者当前分钟是5的倍数，保存到数据库
-                            if not self.quotes_data or should_save:
-                                sql = """
-                                    INSERT INTO realtime_quotes (
-                                        ts_code, name, trade_date, trade_time, price, high, low, 
-                                        open, volume, amount, bid_amount, is_up_limit, is_down_limit, 
-                                        first_limit_up_time
-                                    ) VALUES (
-                                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-                                    )
-                                """
-                                cursor.execute(sql, (
-                                    ts_code, quote['name'], today, current_time_str,
-                                    quote['price'], quote['high'], quote['low'], quote['open'],
-                                    quote['volume'], quote['amount'], quote['bid_amount'],
-                                    quote['is_up_limit'], quote['is_down_limit'],
-                                    current_time_str if quote['first_limit_time'] != '-' else None
-                                ))
-                            
-                        except Exception as e:
-                            log(f"处理股票 {row.get('TS_CODE', 'unknown')} 数据失败: {str(e)}")
-                            continue
-                    
-                    # 如果需要保存到数据库，提交并关闭连接
-                    if should_save:
-                        conn.commit()
-                        cursor.close()
-                        conn.close()
-                        log(f"已保存 {len(quotes)} 条行情数据到数据库")
+                    finally:
+                        if cursor:
+                            cursor.close()
+                        if conn:
+                            conn.close()
             
             return quotes
             
