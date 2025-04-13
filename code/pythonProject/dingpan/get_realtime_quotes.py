@@ -667,7 +667,6 @@ class QuotesManager:
     def _update_market_stats(self):
         """更新市场统计数据"""
         try:
-            # 基本统计
             up_count = 0
             down_count = 0
             limit_up_count = 0
@@ -712,7 +711,11 @@ class QuotesManager:
                 if is_up_limit:
                     limit_up_count += 1
                     current_limits.add(ts_code)
-                    # 存储涨停股票信息，保留原有的首次涨停时间
+                    
+                    # 计算连板数：如果在昨日涨停列表中，则连板数+1，否则为1
+                    limit_times = self.last_trade_date_limits.get(ts_code, 0) + 1 if ts_code in self.last_trade_date_limits else 1
+                    
+                    # 存储涨停股票信息
                     temp_limit_ups[ts_code] = {
                         'name': name,
                         'price': price,
@@ -720,8 +723,9 @@ class QuotesManager:
                         'amount': quote['amount'],
                         'industry': quote['industry'],
                         'concepts': quote['concepts'],
-                        'first_limit_time': quote.get('first_limit_time', '-'),  # 保留首次涨停时间
-                        'is_continuous': ts_code in self.last_trade_date_limits
+                        'first_limit_time': quote.get('first_limit_time', '-'),
+                        'limit_times': limit_times,  # 使用计算出的连板数
+                        'continuous_days': limit_times  # 添加连板天数字段
                     }
                     
                     # 创业板涨停统计
@@ -1186,7 +1190,7 @@ class QuotesManager:
                 
                 # 获取涨停股票列表
                 sql_limits = """
-                    SELECT ts_code 
+                    SELECT ts_code, limit_times 
                     FROM limit_stocks
                     WHERE trade_date = %s 
                     AND limit_type = 'U'
@@ -1194,8 +1198,8 @@ class QuotesManager:
                 cursor.execute(sql_limits, (trade_date,))
                 limits_results = cursor.fetchall()
                 
-                # 存储涨停股票代码
-                self.last_trade_date_limits = {row[0] for row in limits_results}
+                # 存储涨停股票代码和连板次数
+                self.last_trade_date_limits = {row[0]: row[1] for row in limits_results}
                 
                 log(f"成功加载上一交易日({trade_date})数据:")
                 log(f"涨停: {self.last_trade_date_stats['limit_up_count']}只")

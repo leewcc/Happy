@@ -34,13 +34,24 @@ function initLimitAnalysis() {
                 }
             },
             {
-                title: "连板数", 
+                title: "状态", 
                 field: "continuous_days", 
                 width: 80,
                 sorter: "number",
                 formatter: function(cell) {
-                    const value = cell.getValue();
-                    return value > 1 ? `<span class="continuous-days">${value}板</span>` : '-';
+                    const row = cell.getRow().getData();
+                    if (row.type === 'broken') {
+                        return '<span class="status-tag broken">炸板</span>';
+                    } else if (row.type === 'limit_down') {
+                        return '<span class="status-tag limit-down">跌停</span>';
+                    } else {
+                        const value = cell.getValue();
+                        if (value === 1) {
+                            return '<span class="status-tag limit-up">首板</span>';
+                        } else {
+                            return `<span class="status-tag limit-up">${value}板</span>`;
+                        }
+                    }
                 }
             },
             {

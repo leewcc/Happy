@@ -102,7 +102,7 @@ def limit_up_analysis():
                 'ts_code': ts_code,
                 'name': stock['name'],
                 'change_pct': stock['change_pct'],
-                'continuous_days': 1 + (1 if stock['is_continuous'] else 0),
+                'continuous_days': stock['limit_times'],  # 直接使用 limit_times
                 'first_limit_time': stock.get('first_limit_time', '-'),
                 'amount': stock['amount'] / 100000000,
                 'industry': stock['industry'],
@@ -155,7 +155,7 @@ def limit_up_analysis():
                 'limit_up_count': stats['limit_up_count'],
                 'continuous_count': len([s for s in stats['limit_ups'] 
                                        if s['ts_code'] in market_stats.get('limit_ups', {}) 
-                                       and market_stats['limit_ups'][s['ts_code']]['is_continuous']]),
+                                       and market_stats['limit_ups'][s['ts_code']].get('limit_times', 1) > 1]),  # 使用 limit_times > 1 判断连板
                 'gem_limit_up_count': len(gem_limit_ups),
                 'broken_count': stats['broken_limit_count'],
                 'limit_down_count': stats['limit_down_count']
