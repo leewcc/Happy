@@ -74,10 +74,10 @@ def normalize_concept(concept):
     }
     
     # 查找并返回规范化的概念名称
-    for normalized, keywords in concept_mapping.items():
-        # 如果任何关键词是概念的子字符串，就返回规范化的名称
-        if any(keyword in concept for keyword in keywords):
-            return normalized
+    # for normalized, keywords in concept_mapping.items():
+    #     # 如果任何关键词是概念的子字符串，就返回规范化的名称
+    #     if any(keyword in concept for keyword in keywords):
+    #         return normalized
     return concept
 
 def format_amount(value):

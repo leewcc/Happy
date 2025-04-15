@@ -116,6 +116,19 @@ def get_limit_data(trade_date):
         print(f"获取数据失败: {str(e)}")
         return pd.DataFrame()
 
+def get_limit_price(stock_code, trade_date):
+    """
+    获取股票指定日期的跌停价格
+    """
+    query = """
+    SELECT down_limit 
+    FROM stock_limit_prices 
+    WHERE ts_code = %s AND trade_date = %s
+    """
+    cursor.execute(query, (stock_code, trade_date))
+    result = cursor.fetchone()
+    return float(result[0]) if result else None
+
 def insert_limit_stocks(data, trade_date):
     """
     将涨跌停数据插入数据库
@@ -143,7 +156,8 @@ def insert_limit_stocks(data, trade_date):
             first_time = format_time(row.get('first_time'))
             last_time = format_time(row.get('last_time'))
             
-            values = [
+            # 准备基础数据
+            base_values = [
                 trade_date,
                 row['ts_code'],
                 industry,
@@ -162,15 +176,26 @@ def insert_limit_stocks(data, trade_date):
                 last_time,
                 int(row['open_times']) if pd.notna(row['open_times']) else None,
                 row['up_stat'] if pd.notna(row['up_stat']) else None,
-                int(row['limit_times']) if pd.notna(row['limit_times']) else None,
-                row['limit'] if pd.notna(row['limit']) else None,
-                row.get('reason', '')
+                int(row['limit_times']) if pd.notna(row['limit_times']) else None
             ]
             
+            # 插入原始记录
+            values = base_values + [row['limit'] if pd.notna(row['limit']) else None, row.get('reason', '')]
             cursor.execute(insert_sql, values)
             conn.commit()
             print(f"成功插入 {row['ts_code']} 的数据")
-            
+            # 检查是否是炸板且收盘价为跌停的情况
+            if row['limit'] == 'Z':  # 是炸板
+                down_limit = get_limit_price(row['ts_code'], trade_date)
+                if (down_limit is not None and 
+                    pd.notna(row['close']) and
+                    abs(float(row['close']) - down_limit) < 0.01):  # 考虑价格误差范围
+                    
+                    # 插入额外的跌停记录
+                    values = base_values + ['D', row.get('reason', '')]
+                    cursor.execute(insert_sql, values)
+                    print(f"为炸板跌停股票 {row['ts_code']} 添加跌停记录")
+                    conn.commit()
         except Exception as e:
             print(f"插入 {row['ts_code']} 的数据时出错: {str(e)}")
             conn.rollback()
@@ -253,9 +278,9 @@ def main(trade_date=None):
         
     # 处理概念数据
     print("\n=== 开始处理概念数据 ===")
-    # process_concepts(trade_date)
+    process_concepts(trade_date)
 
 if __name__ == "__main__":
     # 可以传入指定日期，格式为'YYYYMMDD'
-    main('20250410')
+    main('20250414')
     

@@ -89,7 +89,6 @@ def init_limit_prices():
     global LIMIT_PRICE_MAP
     try:
         today = datetime.now().strftime('%Y%m%d')
-        today = '20250411'
         print(f"正在从数据库获取 {today} 的涨跌停价格数据...")
         
         # 连接数据库
@@ -102,8 +101,27 @@ def init_limit_prices():
         results = cursor.fetchall()
         
         if not results:
-            print(f"数据库中没有找到 {today} 的涨跌停价格数据")
-            return False
+            print(f"数据库中没有找到 {today} 的涨跌停价格数据，尝试从接口获取...")
+            cursor.close()
+            conn.close()
+            
+            # 使用完整路径导入
+            import sys
+            sys.path.append('C:/happy/Happy/code/pythonProject')
+            from loaddata.daily.load_limit_prices import load_limit_prices
+            
+            if load_limit_prices(today):
+                # 重新尝试获取数据
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute(sql, (today,))
+                results = cursor.fetchall()
+                if not results:
+                    print("获取涨跌停价格数据失败")
+                    return False
+            else:
+                print("从接口获取涨跌停价格数据失败")
+                return False
             
         # 将数据转换为字典格式
         for row in results:
@@ -119,6 +137,7 @@ def init_limit_prices():
         print(f"错误类型: {type(e)}")
         print(f"错误信息: {str(e)}")
         return False
+        
     finally:
         if 'cursor' in locals():
             cursor.close()
@@ -436,29 +455,48 @@ class QuotesManager:
 
     def start(self):
         """启动行情管理器"""
-        if not init_limit_prices():
-            print("初始化涨跌停价格失败")
-            return
-        
-        if not init_stock_list():
-            print("初始化股票列表失败")
-            return
-            
-        # 初始化股票信息缓存
-        self._init_stock_info_cache()
-        
-        self.ready = True
-        
-        # 启动个股行情线程
-        self.thread = threading.Thread(target=self._run_stock_quotes)
-        self.thread.daemon = True
-        self.thread.start()
-        
-        # 启动指数行情线程
-        self.index_thread = threading.Thread(target=self._run_index_quotes)
-        self.index_thread.daemon = True
-        self.index_thread.start()
-    
+        while True:
+            try:
+                # 检查是否为交易时间
+                if not is_trade_time():
+                    current_time = datetime.now().strftime('%H:%M:%S')
+                    log(f"当前时间 {current_time} 非交易时间，等待中...")
+                    time.sleep(60)  # 每分钟检查一次
+                    continue
+                
+                # 交易时间开始初始化
+                if not init_limit_prices():
+                    print("初始化涨跌停价格失败")
+                    time.sleep(60)  # 失败后等待1分钟重试
+                    continue
+                
+                if not init_stock_list():
+                    print("初始化股票列表失败")
+                    time.sleep(60)  # 失败后等待1分钟重试
+                    continue
+                    
+                # 初始化股票信息缓存
+                self._init_stock_info_cache()
+                
+                self.ready = True
+                
+                # 启动个股行情线程
+                self.thread = threading.Thread(target=self._run_stock_quotes)
+                self.thread.daemon = True
+                self.thread.start()
+                
+                # 启动指数行情线程
+                self.index_thread = threading.Thread(target=self._run_index_quotes)
+                self.index_thread.daemon = True
+                self.index_thread.start()
+                
+                # 初始化成功后退出循环
+                break
+                
+            except Exception as e:
+                log(f"启动行情管理器失败: {str(e)}")
+                time.sleep(60)  # 出错后等待1分钟重试
+
     def _init_stock_info_cache(self):
         """初始化股票信息缓存"""
         try:
@@ -521,7 +559,7 @@ class QuotesManager:
         self._update_stock_quotes()
         
         # 设置定时任务
-        schedule.every().minute.do(self._update_stock_quotes)
+        schedule.every(30).seconds.do(self._update_stock_quotes)
         
         while True:
             try:
@@ -1149,10 +1187,11 @@ class QuotesManager:
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # 获取最近的交易日
+            # 获取最近的交易日（非今天）
             sql_last_date = """
                 SELECT DISTINCT trade_date 
                 FROM limit_stats
+                WHERE trade_date < CURDATE()
                 ORDER BY trade_date DESC 
                 LIMIT 1
             """

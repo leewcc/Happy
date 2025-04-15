@@ -336,7 +336,7 @@ if __name__ == "__main__":
             current_time = datetime.now()
             target_time = current_time.replace(hour=17, minute=0, second=0, microsecond=0)
             
-            if current_time.hour < 17:
+            if current_time.hour < 17 and False:
                 # 计算到17:00还需要多少秒
                 wait_seconds = (target_time - current_time).total_seconds()
                 print(f"当前时间: {current_time.strftime('%H:%M:%S')}, 等待到17:00执行，还需等待 {int(wait_seconds)} 秒")
@@ -347,7 +347,7 @@ if __name__ == "__main__":
             print(f"开始执行数据加载任务，当前时间: {current_time.strftime('%H:%M:%S')}")
             
             # 指定日期，格式为 'YYYYMMDD'
-            specified_date = "20250410"
+            specified_date = "20250414"
             specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
             sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

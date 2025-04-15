@@ -445,9 +445,10 @@ def filter_stocks(filters):
                     return '-'
                 
                 # 合并为字符串后再进行同义词合并
-                normalized = normalize_concepts(','.join(filtered_concepts))
-                logger.info(f"同义词合并后的结果: {normalized}")
-                return normalized
+                # normalized = normalize_concepts(','.join(filtered_concepts))
+                # logger.info(f"同义词合并后的结果: {normalized}")
+                # return normalized
+                return ','.join(filtered_concepts)
             
             logger.info("开始处理所有股票的概念...")
             # 应用概念处理
