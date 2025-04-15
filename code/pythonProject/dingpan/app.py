@@ -6,6 +6,7 @@ import threading
 from get_realtime_quotes import QuotesManager
 import time
 import numpy as np
+import historical_data
 
 app = Flask(__name__)
 
@@ -36,150 +37,150 @@ def index():
     """主页"""
     return render_template('index.html')
 
-@app.route('/api/market_overview')
-def market_overview():
-    """获取市场概览数据"""
-    global quotes_manager
-    if not quotes_manager:
-        return jsonify({'error': 'Quotes manager not initialized'})
-
-    try:
+@app.route('/api/market_overview', defaults={'date': None})
+@app.route('/api/market_overview/<date>')
+def market_overview(date):
+    if date is None:
+        # 返回实时数据
         return jsonify({
             'indices': quotes_manager.get_index_quotes(),
-            'amount_trend': quotes_manager.get_amount_trend(),
-            'statistics': quotes_manager.get_market_stats()
+            'statistics': quotes_manager.get_market_stats(),
+            'amount_trend': quotes_manager.get_amount_trend()
         })
-    except Exception as e:
-        log(f"获取市场概览数据失败: {str(e)}")
-        return jsonify({'error': str(e)})
+    else:
+        # 返回历史数据
+        return jsonify(historical_data.get_historical_market_overview(date))
 
-@app.route('/api/stock_list')
-def get_stock_list():
-    """获取个股列表"""
+@app.route('/api/stock_list', defaults={'date': None})
+@app.route('/api/stock_list/<date>')
+def stock_list(date):
+    """获取股票列表"""
     try:
         sort_by = request.args.get('sort_by', 'change_pct')  # 默认按涨幅排序
         order = request.args.get('order', 'desc')  # 默认降序
         
-        # 获取原始数据
-        stocks = list(quotes_manager.get_stock_list())
-        
-        # 计算早盘未竞价金额
-        for stock in stocks:
-            stock['non_bid_amount'] = (stock.get('amount', 0) or 0) - (stock.get('bid_amount', 0) or 0)
-        
-        # 排序
-        reverse = order == 'desc'
-        stocks.sort(key=lambda x: float(x.get(sort_by, 0) or 0), reverse=reverse)
-        
-        # 只返回前100条数据
-        return jsonify(stocks[:100])
-        
+        if date is None:
+            # 获取实时数据
+            stocks = list(quotes_manager.get_stock_list())
+            
+            # 计算早盘未竞价金额
+            for stock in stocks:
+                stock['non_bid_amount'] = (stock.get('amount', 0) or 0) - (stock.get('bid_amount', 0) or 0)
+            
+            # 排序
+            reverse = order == 'desc'
+            stocks.sort(key=lambda x: float(x.get(sort_by, 0) or 0), reverse=reverse)
+            
+            # 只返回前100条数据
+            return jsonify(stocks[:100])
+        else:
+            # 返回历史数据
+            return jsonify(historical_data.get_historical_stock_list(date, sort_by, order))
+            
     except Exception as e:
-        log(f"获取个股列表失败: {str(e)}")
+        print(f"获取股票列表失败: {str(e)}")
         return jsonify([])
 
-@app.route('/api/limit_up_analysis')
-def limit_up_analysis():
+@app.route('/api/limit_up_analysis', defaults={'date': None})
+@app.route('/api/limit_up_analysis/<date>')
+def limit_up_analysis(date):
     """获取涨停分析数据"""
-    global quotes_manager
-    if not quotes_manager:
-        print("行情管理器未初始化")
-        return jsonify({'error': 'Quotes manager not initialized'})
-
     try:
-        market_stats = quotes_manager.get_market_stats()
-        concept_stats = quotes_manager.get_concept_stats()
-        last_trade_date_stats = quotes_manager.get_last_trade_date_stats()
-        
-        
-        # 获取所有相关股票列表
-        stocks_list = []
-        
-        # 添加涨停股票
-        for ts_code, stock in market_stats.get('limit_ups', {}).items():
-            # print(f"涨停股票: {stock}")
-            stocks_list.append({
-                'ts_code': ts_code,
-                'name': stock['name'],
-                'change_pct': stock['change_pct'],
-                'continuous_days': stock['limit_times'],  # 直接使用 limit_times
-                'first_limit_time': stock.get('first_limit_time', '-'),
-                'amount': stock['amount'] / 100000000,
-                'industry': stock['industry'],
-                'concepts': stock['concepts'],
-                'type': 'limit_up',
-                'is_broken': False
-            })
+        if date is None:
+            # 获取实时数据
+            market_stats = quotes_manager.get_market_stats()
+            concept_stats = quotes_manager.get_concept_stats()
+            last_trade_date_stats = quotes_manager.get_last_trade_date_stats()
             
-        # 添加炸板股票
-        for ts_code, stock in market_stats.get('broken_limits', {}).items():
-            if ts_code not in [s['ts_code'] for s in stocks_list]:  # 避免重复
+            # 获取所有相关股票列表
+            stocks_list = []
+            
+            # 添加涨停股票
+            for ts_code, stock in market_stats.get('limit_ups', {}).items():
                 stocks_list.append({
                     'ts_code': ts_code,
                     'name': stock['name'],
                     'change_pct': stock['change_pct'],
-                    'continuous_days': 0,
+                    'continuous_days': stock['limit_times'],
                     'first_limit_time': stock.get('first_limit_time', '-'),
                     'amount': stock['amount'] / 100000000,
                     'industry': stock['industry'],
                     'concepts': stock['concepts'],
-                    'type': 'broken',
-                    'is_broken': True
-                })
-                
-        # 添加跌停股票
-        for ts_code, stock in market_stats.get('limit_downs', {}).items():
-            if ts_code not in [s['ts_code'] for s in stocks_list]:  # 避免重复
-                stocks_list.append({
-                    'ts_code': ts_code,
-                    'name': stock['name'],
-                    'change_pct': stock['change_pct'],
-                    'continuous_days': 0,
-                    'first_limit_time': '-',
-                    'amount': stock['amount'] / 100000000,
-                    'industry': stock['industry'],
-                    'concepts': stock['concepts'],
-                    'type': 'limit_down',
+                    'type': 'limit_up',
                     'is_broken': False
                 })
+                
+            # 添加炸板股票
+            for ts_code, stock in market_stats.get('broken_limits', {}).items():
+                if ts_code not in [s['ts_code'] for s in stocks_list]:
+                    stocks_list.append({
+                        'ts_code': ts_code,
+                        'name': stock['name'],
+                        'change_pct': stock['change_pct'],
+                        'continuous_days': 0,
+                        'first_limit_time': stock.get('first_limit_time', '-'),
+                        'amount': stock['amount'] / 100000000,
+                        'industry': stock['industry'],
+                        'concepts': stock['concepts'],
+                        'type': 'broken',
+                        'is_broken': True
+                    })
+                    
+            # 添加跌停股票
+            for ts_code, stock in market_stats.get('limit_downs', {}).items():
+                if ts_code not in [s['ts_code'] for s in stocks_list]:
+                    stocks_list.append({
+                        'ts_code': ts_code,
+                        'name': stock['name'],
+                        'change_pct': stock['change_pct'],
+                        'continuous_days': 0,
+                        'first_limit_time': '-',
+                        'amount': stock['amount'] / 100000000,
+                        'industry': stock['industry'],
+                        'concepts': stock['concepts'],
+                        'type': 'limit_down',
+                        'is_broken': False
+                    })
 
-        # 获取概念统计
-        concept_summary = []
-        for concept, stats in concept_stats.items():
-            # 计算创业板涨停数
-            gem_limit_ups = [s for s in stats['limit_ups'] 
-                             if s['ts_code'].startswith(('300', '301', '688'))]
+            # 获取概念统计
+            concept_summary = []
+            for concept, stats in concept_stats.items():
+                gem_limit_ups = [s for s in stats['limit_ups'] 
+                                if s['ts_code'].startswith(('300', '301', '688'))]
+                
+                concept_summary.append({
+                    'concept': concept,
+                    'limit_up_count': stats['limit_up_count'],
+                    'continuous_count': len([s for s in stats['limit_ups'] 
+                                           if s['ts_code'] in market_stats.get('limit_ups', {}) 
+                                           and market_stats['limit_ups'][s['ts_code']].get('limit_times', 1) > 1]),
+                    'gem_limit_up_count': len(gem_limit_ups),
+                    'broken_count': stats['broken_limit_count'],
+                    'limit_down_count': stats['limit_down_count']
+                })
             
-            concept_summary.append({
-                'concept': concept,
-                'limit_up_count': stats['limit_up_count'],
-                'continuous_count': len([s for s in stats['limit_ups'] 
-                                       if s['ts_code'] in market_stats.get('limit_ups', {}) 
-                                       and market_stats['limit_ups'][s['ts_code']].get('limit_times', 1) > 1]),  # 使用 limit_times > 1 判断连板
-                'gem_limit_up_count': len(gem_limit_ups),
-                'broken_count': stats['broken_limit_count'],
-                'limit_down_count': stats['limit_down_count']
-            })
-        
-        response_data = {
-            'statistics': {
-                'limit_up_count': market_stats.get('limit_up_count', 0),
-                'gem_limit_up_count': market_stats.get('cyb_limit_up_count', 0) + market_stats.get('kc_limit_up_count', 0),
-                'broken_limit_count': market_stats.get('broken_limit_count', 0),
-                'limit_down_count': market_stats.get('limit_down_count', 0),
-                'continuous_limit_count': market_stats.get('continuous_limit_count', 0)
-            },
-            'last_trade_date_stats': last_trade_date_stats,
-            'concept_stats': concept_summary,
-            'limit_stocks': stocks_list  # 包含所有涨停、跌停、炸板股票
-        }
-        
-        return jsonify(response_data)
-        
+            response_data = {
+                'statistics': {
+                    'limit_up_count': market_stats.get('limit_up_count', 0),
+                    'gem_limit_up_count': market_stats.get('cyb_limit_up_count', 0) + market_stats.get('kc_limit_up_count', 0),
+                    'broken_limit_count': market_stats.get('broken_limit_count', 0),
+                    'limit_down_count': market_stats.get('limit_down_count', 0),
+                    'continuous_limit_count': market_stats.get('continuous_limit_count', 0)
+                },
+                'last_trade_date_stats': last_trade_date_stats,
+                'concept_stats': concept_summary,
+                'limit_stocks': stocks_list
+            }
+            
+            return jsonify(response_data)
+        else:
+            # 返回历史数据
+            return jsonify(historical_data.get_historical_limit_analysis(date))
+            
     except Exception as e:
         print(f"获取涨停分析数据失败: {str(e)}")
         import traceback
-        traceback.print_exc()  # 打印完整错误堆栈
+        traceback.print_exc()
         return jsonify({'error': str(e)})
 
 @app.route('/api/stock_kline/<ts_code>')

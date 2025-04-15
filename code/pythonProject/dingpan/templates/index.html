@@ -15,7 +15,7 @@
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">实时盯盘</a>
                 <div class="collapse navbar-collapse">
-                    <ul class="navbar-nav">
+                    <ul class="navbar-nav me-auto">
                         <li class="nav-item">
                             <a class="nav-link active" href="#" data-tab="rank">涨跌排行</a>
                         </li>
@@ -26,6 +26,17 @@
                             <a class="nav-link" href="#" data-tab="sector">板块地图</a>
                         </li>
                     </ul>
+                    <!-- 修改日期选择和实时数据控制的位置和样式 -->
+                    <div class="d-flex align-items-center">
+                        <div class="form-check me-3">
+                            <input class="form-check-input" type="checkbox" id="realtime-data" checked>
+                            <label class="form-check-label" for="realtime-data">
+                                实时数据
+                            </label>
+                        </div>
+                        <input type="date" class="form-control me-2" id="date-picker" disabled style="width: 150px;">
+                        <button class="btn btn-primary btn-sm" id="query-btn" disabled>查询</button>
+                    </div>
                 </div>
             </div>
         </nav>

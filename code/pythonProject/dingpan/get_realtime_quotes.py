@@ -458,11 +458,11 @@ class QuotesManager:
         while True:
             try:
                 # 检查是否为交易时间
-                if not is_trade_time():
-                    current_time = datetime.now().strftime('%H:%M:%S')
-                    log(f"当前时间 {current_time} 非交易时间，等待中...")
-                    time.sleep(60)  # 每分钟检查一次
-                    continue
+                # if not is_trade_time():
+                #     current_time = datetime.now().strftime('%H:%M:%S')
+                #     log(f"当前时间 {current_time} 非交易时间，等待中...")
+                #     time.sleep(60)  # 每分钟检查一次
+                #     continue
                 
                 # 交易时间开始初始化
                 if not init_limit_prices():

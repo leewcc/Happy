@@ -1,6 +1,48 @@
 $(document).ready(function() {
     console.log('页面初始化开始');
     
+    // 日期选择和实时数据控制
+    const realtimeCheckbox = $('#realtime-data');
+    const datePicker = $('#date-picker');
+    const queryBtn = $('#query-btn');
+    
+    // 设置日期选择器的最大值为今天
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    datePicker.attr('max', dateStr);
+    datePicker.val(dateStr);
+    
+    // 监听实时数据复选框变化
+    realtimeCheckbox.change(function() {
+        if (this.checked) {
+            datePicker.prop('disabled', true);
+            queryBtn.prop('disabled', true);
+            // 恢复实时数据更新
+            startRealTimeUpdate();
+        } else {
+            datePicker.prop('disabled', false);
+            queryBtn.prop('disabled', false);
+            // 停止实时数据更新
+            stopRealTimeUpdate();
+        }
+    });
+    
+    // 监听查询按钮点击
+    queryBtn.click(function() {
+        if (!realtimeCheckbox.prop('checked')) {
+            const selectedDate = datePicker.val();
+            loadHistoricalData(selectedDate);
+        }
+    });
+    
+    // 监听日期选择器回车事件
+    datePicker.keypress(function(e) {
+        if (e.which == 13 && !realtimeCheckbox.prop('checked')) {
+            const selectedDate = $(this).val();
+            loadHistoricalData(selectedDate);
+        }
+    });
+    
     // 从 localStorage 获取上次访问的页面
     const lastTab = localStorage.getItem('currentTab') || 'rank';
     console.log('上次访问的页面:', lastTab);
@@ -111,7 +153,12 @@ $(document).ready(function() {
 });
 
 // 加载页面数据
-function loadData(tab) {
+function loadData(tab, date = null) {
+    if (date) {
+        loadHistoricalData(date);
+        return;
+    }
+    
     console.log('loadData被调用，tab:', tab);
     switch(tab) {
         case 'rank':
@@ -565,4 +612,59 @@ function updateDistributionChart(stats) {
     };
     
     distChart.setOption(option);
+}
+
+// 停止实时更新
+function stopRealTimeUpdate() {
+    clearInterval(window.dataRefreshInterval);
+}
+
+// 开始实时更新
+function startRealTimeUpdate() {
+    // 立即更新一次数据
+    const activeTab = $('.nav-link.active').data('tab');
+    loadData(activeTab);
+    
+    // 设置定时更新
+    window.dataRefreshInterval = setInterval(function() {
+        const activeTab = $('.nav-link.active').data('tab');
+        loadData(activeTab);
+    }, 10000);
+}
+
+// 加载历史数据
+function loadHistoricalData(date) {
+    const activeTab = $('.nav-link.active').data('tab');
+    const formattedDate = date.replace(/-/g, '');  // 转换日期格式 YYYY-MM-DD 到 YYYYMMDD
+    
+    switch(activeTab) {
+        case 'rank':
+            $.get(`/api/market_overview/${formattedDate}`, function(data) {
+                if (data.indices) {
+                    updateIndexOverview(data.indices);
+                }
+                if (data.statistics) {
+                    updateMarketStats(data.statistics);
+                    updateDistributionChart(data.statistics);
+                }
+                if (data.amount_trend) {
+                    updateAmountTrend(data.amount_trend);
+                }
+            });
+            
+            $.get(`/api/stock_list/${formattedDate}`, function(data) {
+                updateStockList(data);
+            });
+            break;
+            
+        case 'limit':
+            if (typeof updateLimitAnalysis === 'function') {
+                updateLimitAnalysis(formattedDate);
+            }
+            break;
+            
+        case 'sector':
+            loadSectorMap(formattedDate);
+            break;
+    }
 } 
