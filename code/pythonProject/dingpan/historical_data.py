@@ -20,6 +20,7 @@ def get_historical_market_overview(date):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
         # 获取指数数据
         indices_sql = """
             SELECT 
@@ -43,14 +44,14 @@ def get_historical_market_overview(date):
         cursor.execute(indices_sql, (date,))
         indices = cursor.fetchall()
         
-        # 获取市场统计数据
+        # 从 limit_stats 表获取市场统计数据
         stats_sql = """
             SELECT 
-                SUM(CASE WHEN price_change_rate > 0 THEN 1 ELSE 0 END) as up_count,
-                SUM(CASE WHEN price_change_rate < 0 THEN 1 ELSE 0 END) as down_count,
-                SUM(turnover_amount) as total_amount
-            FROM daily_data
+                SUM(CASE WHEN item = 'up_count' THEN count ELSE 0 END) as up_count,
+                SUM(CASE WHEN item = 'down_count' THEN count ELSE 0 END) as down_count
+            FROM limit_stats
             WHERE trade_date = %s
+            AND item IN ('up_count', 'down_count')
         """
         cursor.execute(stats_sql, (date,))
         statistics = cursor.fetchone()

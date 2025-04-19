@@ -14,16 +14,20 @@ $(document).ready(function() {
     
     // 监听实时数据复选框变化
     realtimeCheckbox.change(function() {
+        console.log('实时数据复选框状态改变:', this.checked);
+        
         if (this.checked) {
             datePicker.prop('disabled', true);
             queryBtn.prop('disabled', true);
             // 恢复实时数据更新
             startRealTimeUpdate();
+            console.log('启用实时数据更新');
         } else {
             datePicker.prop('disabled', false);
             queryBtn.prop('disabled', false);
             // 停止实时数据更新
             stopRealTimeUpdate();
+            console.log('禁用实时数据更新');
         }
     });
     
@@ -117,18 +121,8 @@ $(document).ready(function() {
         });
     });
 
-    // 定时刷新数据
-    setInterval(function() {
-        const activeTab = $('.nav-link.active').data('tab');
-        console.log('定时刷新当前页面:', activeTab);
-        
-        // 如果当前是涨停分析页面，直接调用更新函数
-        if (activeTab === 'limit' && typeof updateLimitAnalysis === 'function') {
-            updateLimitAnalysis();
-        } else {
-            loadData(activeTab);
-        }
-    }, 10000);  // 每分钟刷新一次
+    // 初始化时启动实时更新
+    startRealTimeUpdate();
 
     console.log('页面初始化完成');
 });
@@ -616,20 +610,42 @@ function updateDistributionChart(stats) {
 
 // 停止实时更新
 function stopRealTimeUpdate() {
-    clearInterval(window.dataRefreshInterval);
+    console.log('尝试停止实时更新');
+    console.log('当前定时器ID:', window.dataRefreshInterval);
+    
+    if (window.dataRefreshInterval) {
+        clearInterval(window.dataRefreshInterval);
+        window.dataRefreshInterval = null;
+        console.log('已停止实时更新');
+    } else {
+        console.log('没有找到活动的定时器');
+    }
 }
 
 // 开始实时更新
 function startRealTimeUpdate() {
+    console.log('尝试启动实时更新');
+    
+    // 先清除可能存在的旧定时器
+    stopRealTimeUpdate();
+    
     // 立即更新一次数据
     const activeTab = $('.nav-link.active').data('tab');
     loadData(activeTab);
     
-    // 设置定时更新
+    // 设置新的定时更新
     window.dataRefreshInterval = setInterval(function() {
         const activeTab = $('.nav-link.active').data('tab');
-        loadData(activeTab);
+        console.log('定时刷新当前页面:', activeTab);
+        
+        if (activeTab === 'limit' && typeof updateLimitAnalysis === 'function') {
+            updateLimitAnalysis();
+        } else {
+            loadData(activeTab);
+        }
     }, 10000);
+    
+    console.log('已启动实时更新，定时器ID:', window.dataRefreshInterval);
 }
 
 // 加载历史数据
