@@ -32,6 +32,22 @@ def start_quotes_manager():
     quotes_manager = QuotesManager()
     quotes_manager.start()
 
+# 在应用启动时初始化 quotes_manager
+@app.before_request
+def init_app():
+    """应用初始化"""
+    global quotes_manager
+    if quotes_manager is None:
+        start_quotes_manager()
+
+# 确保 historical_data 模块可以访问 quotes_manager
+def get_quotes_manager():
+    """获取行情管理器实例"""
+    global quotes_manager
+    if quotes_manager is None:
+        start_quotes_manager()
+    return quotes_manager
+
 @app.route('/')
 def index():
     """主页"""

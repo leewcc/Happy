@@ -373,33 +373,62 @@ function showKline(ts_code) {
 let currentSortColumn = null;
 let isAscending = true;
 
-function updateStockList(stocks) {
-    if (!stocks || !stocks.length) {
-        console.log('No stock data received');
-        return;
+// 处理表格排序
+$(document).on('click', '.sortable', function() {
+    const sortBy = $(this).data('sort');
+    const currentOrder = $(this).hasClass('asc') ? 'desc' : 'asc';
+    
+    // 更新排序状态
+    $('.sortable').removeClass('asc desc');
+    $(this).addClass(currentOrder);
+    
+    // 获取当前日期
+    const selectedDate = $('#date-picker').val();
+    const isRealtime = $('#realtime-data').prop('checked');
+    
+    // 根据是否是实时数据决定使用哪个API
+    if (isRealtime) {
+        // 实时数据排序
+        $.get(`/api/stock_list?sort_by=${sortBy}&order=${currentOrder}`, function(data) {
+            updateStockList(data);
+        });
+    } else {
+        // 历史数据排序，保持日期参数
+        const formattedDate = selectedDate.replace(/-/g, '');
+        $.get(`/api/stock_list/${formattedDate}?sort_by=${sortBy}&order=${currentOrder}`, function(data) {
+            updateStockList(data);
+        });
     }
+});
 
-    let html = `
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>股票名称</th>
-                    <th class="sortable ${currentSortColumn === 'change_pct' ? (isAscending ? 'asc' : 'desc') : ''}" 
-                        data-sort="change_pct">涨幅</th>
-                    <th class="sortable ${currentSortColumn === 'amount' ? (isAscending ? 'asc' : 'desc') : ''}" 
-                        data-sort="amount">成交额(亿)</th>
-                    <th class="sortable ${currentSortColumn === 'bid_amount' ? (isAscending ? 'asc' : 'desc') : ''}" 
-                        data-sort="bid_amount">竞价金额(亿)</th>
-                    <th class="sortable ${currentSortColumn === 'non_bid_amount' ? (isAscending ? 'asc' : 'desc') : ''}" 
-                        data-sort="non_bid_amount">早盘未竞价(亿)</th>
-                    <th>所属行业</th>
-                    <th>概念</th>
-                </tr>
-            </thead>
-            <tbody>
+// 更新股票列表显示
+function updateStockList(data) {
+    // 获取当前的排序状态
+    const currentSortColumn = $('.sortable.asc, .sortable.desc').data('sort');
+    const isAscending = $('.sortable.asc').length > 0;
+    
+    // 构建表头
+    const tableHeader = `
+        <thead>
+            <tr>
+                <th>股票名称</th>
+                <th class="sortable ${currentSortColumn === 'change_pct' ? (isAscending ? 'asc' : 'desc') : ''}" 
+                    data-sort="change_pct">涨幅</th>
+                <th class="sortable ${currentSortColumn === 'amount' ? (isAscending ? 'asc' : 'desc') : ''}" 
+                    data-sort="amount">成交额(亿)</th>
+                <th class="sortable ${currentSortColumn === 'bid_amount' ? (isAscending ? 'asc' : 'desc') : ''}" 
+                    data-sort="bid_amount">竞价金额(亿)</th>
+                <th class="sortable ${currentSortColumn === 'non_bid_amount' ? (isAscending ? 'asc' : 'desc') : ''}" 
+                    data-sort="non_bid_amount">早盘未竞价(亿)</th>
+                <th>所属行业</th>
+                <th>概念</th>
+            </tr>
+        </thead>
     `;
     
-    stocks.forEach(stock => {
+    let html = tableHeader + '<tbody>';
+    
+    data.forEach(stock => {
         const changePctClass = stock.change_pct >= 0 ? 'up-color' : 'down-color';
         const amount = stock.amount ? (stock.amount/100000000).toFixed(2) : '0.00';
         const bidAmount = stock.bid_amount ? (stock.bid_amount/100000000).toFixed(2) : '0.00';
@@ -426,22 +455,6 @@ function updateStockList(stocks) {
     html += '</tbody></table>';
     $('#stock-table').html(html);
     
-    // 添加排序列的点击事件
-    $('.sortable').click(function() {
-        const column = $(this).data('sort');
-        
-        // 如果点击的是当前排序列，则反转排序方向
-        if (column === currentSortColumn) {
-            isAscending = !isAscending;
-        } else {
-            currentSortColumn = column;
-            isAscending = false;  // 新列默认降序
-        }
-        
-        // 重新加载数据
-        loadStockList();
-    });
-
     // 添加表格行点击事件
     $('#stock-table tbody tr').click(function() {
         const tsCode = $(this).data('ts-code');

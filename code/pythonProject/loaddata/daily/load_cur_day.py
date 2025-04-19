@@ -345,9 +345,9 @@ if __name__ == "__main__":
     
             
             print(f"开始执行数据加载任务，当前时间: {current_time.strftime('%H:%M:%S')}")
-            
+        
             # 指定日期，格式为 'YYYYMMDD'
-            specified_date = "20250414"
+            specified_date = "20250418"
             specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
             sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 

@@ -1,6 +1,7 @@
 import pymysql
 from datetime import datetime
 from get_realtime_quotes import QuotesManager
+from app import get_quotes_manager  # 导入获取 quotes_manager 的函数
 
 # 数据库配置
 DB_CONFIG = {
@@ -139,9 +140,9 @@ def get_historical_stock_list(date, sort_by=None, order=None):
                 d.close_price as price,
                 d.previous_close_price as pre_close,
                 d.price_change_rate as change_pct,
-                d.turnover_amount as amount,
-                d.call_auction_increase * d.turnover_amount as bid_amount,
-                d.turnover_amount * (1 - d.call_auction_increase) as non_bid_amount
+                d.turnover_amount * 1000 as amount,  # 转换为元
+                d.call_auction_increase * d.turnover_amount * 1000 as bid_amount,  # 转换为元
+                d.turnover_amount * (1 - d.call_auction_increase) * 1000 as non_bid_amount  # 转换为元
             FROM daily_data d
             WHERE d.trade_date = %s
         """
@@ -161,20 +162,40 @@ def get_historical_stock_list(date, sort_by=None, order=None):
         cursor.execute(sql, (date,))
         stocks = cursor.fetchall()
         
-        # 从内存中获取行业和概念信息
-        quotes_manager = QuotesManager()
+        # 使用全局的 quotes_manager
+        quotes_manager = get_quotes_manager()
         stock_info_cache = quotes_manager.stock_info_cache
         
         # 添加行业和概念信息
+        processed_stocks = []
         for stock in stocks:
-            ts_code = stock['ts_code']
-            stock_code = ts_code.split('.')[0]  # 去掉后缀
-            info = stock_info_cache.get(stock_code, {'industry': '-', 'concepts': '-'})
-            stock['industry'] = info['industry']
-            stock['concepts'] = info['concepts']
+            stock_code = stock['ts_code']
+            # 添加后缀
+            suffix = ''
+            if stock_code.startswith('60') or stock_code.startswith('68'):
+                suffix = 'SH'
+            elif stock_code.startswith(('00', '30')):
+                suffix = 'SZ'
+            elif stock_code.startswith(('83', '87')):
+                suffix = 'BJ'
+            
+            ts_code = f"{stock_code}.{suffix}"
+            info = stock_info_cache.get(ts_code, {'industry': '-', 'concepts': '-'})
+            
+            processed_stocks.append({
+                'ts_code': ts_code,  # 使用带后缀的代码
+                'name': stock['name'],
+                'price': float(stock['price']) if stock['price'] is not None else 0,
+                'pre_close': float(stock['pre_close']) if stock['pre_close'] is not None else 0,
+                'change_pct': float(stock['change_pct']) if stock['change_pct'] is not None else 0,
+                'amount': float(stock['amount']) if stock['amount'] is not None else 0,
+                'bid_amount': float(stock['bid_amount']) if stock['bid_amount'] is not None else 0,
+                'non_bid_amount': float(stock['non_bid_amount']) if stock['non_bid_amount'] is not None else 0,
+                'industry': info['industry'],
+                'concepts': info['concepts']
+            })
         
-        # print(f"股票数据: {stocks}")
-        return stocks
+        return processed_stocks[:100]
         
     finally:
         if 'cursor' in locals():
