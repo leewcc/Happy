@@ -82,11 +82,28 @@ def get_historical_market_overview(date):
         cursor.execute(stocks_sql, (date,))
         stocks = cursor.fetchall()
         
+        # 在 Python 中处理后缀拼接
+        processed_stocks = []
+        for stock in stocks:
+            stock_code = stock['stock_code']
+            suffix = ''
+            if stock_code.startswith('60') or stock_code.startswith('68'):
+                suffix = 'SH'
+            elif stock_code.startswith(('00', '30')):
+                suffix = 'SZ'
+            elif stock_code.startswith(('83', '87')):
+                suffix = 'BJ'
+            
+            processed_stocks.append({
+                'ts_code': f"{stock_code}.{suffix}",
+                'change_pct': float(stock['change_pct']) if stock['change_pct'] is not None else 0
+            })
+        
         result = {
             'indices': indices,
             'statistics': {
                 **statistics,
-                'stocks': stocks
+                'stocks': processed_stocks
             },
             'amount_trend': []  # 暂时返回空列表
         }
@@ -156,7 +173,7 @@ def get_historical_stock_list(date, sort_by=None, order=None):
             stock['industry'] = info['industry']
             stock['concepts'] = info['concepts']
         
-        print(f"股票数据: {stocks}")
+        # print(f"股票数据: {stocks}")
         return stocks
         
     finally:

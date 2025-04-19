@@ -531,6 +531,8 @@ function updateAmountTrend(data) {
 
 // 更新涨跌分布图
 function updateDistributionChart(stats) {
+    console.log('开始更新涨跌分布图，数据:', stats);
+    
     const distChart = echarts.init(document.getElementById('distribution-chart'));
     
     // 构建涨跌分布数据
@@ -545,11 +547,19 @@ function updateDistributionChart(stats) {
         {min: -Infinity, max: -11, label: '<-11%'}
     ];
 
+    // 确保 stocks 是数组且 change_pct 是数字
+    const stocks = Array.isArray(stats.stocks) ? stats.stocks : [];
+    console.log('处理的股票数量:', stocks.length);
+
     // 计算每个区间的股票数量
     const data = ranges.map(range => {
-        const count = stats.stocks.filter(stock => 
-            stock.change_pct >= range.min && stock.change_pct < range.max
-        ).length;
+        const count = stocks.filter(stock => {
+            const pct = parseFloat(stock.change_pct);
+            return !isNaN(pct) && pct >= range.min && pct < range.max;
+        }).length;
+        
+        console.log(`区间 ${range.label}: ${count}只`);
+        
         return {
             value: count,
             itemStyle: {
@@ -575,7 +585,7 @@ function updateDistributionChart(stats) {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '15%',  // 增加底部空间，防止标签显示不全
+            bottom: '15%',
             containLabel: true
         },
         xAxis: {
@@ -605,6 +615,7 @@ function updateDistributionChart(stats) {
         }]
     };
     
+    console.log('设置图表选项:', option);
     distChart.setOption(option);
 }
 
