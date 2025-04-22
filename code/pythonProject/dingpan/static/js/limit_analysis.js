@@ -265,8 +265,15 @@ function initLimitAnalysis() {
     $('.stock-type-filter input').change(updateStockFilter);
 
     // 将 updateLimitAnalysis 函数移到全局作用域
-    window.updateLimitAnalysis = function() {
-        $.get('/api/limit_up_analysis', function(data) {
+    window.updateLimitAnalysis = function(date, isRealtime) {
+        // 构建API URL
+        let url = '/api/limit_up_analysis';
+        if (!isRealtime && date) {
+            url = `/api/limit_up_analysis/${date}`;  // 添加日期参数到URL
+        }
+        
+        // 发起请求
+        $.get(url, function(data) {
             console.log('涨停分析数据:', data);
             
             if(!data || data.error) {

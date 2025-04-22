@@ -457,12 +457,12 @@ class QuotesManager:
         """启动行情管理器"""
         while True:
             try:
-                # # 检查是否为交易时间    
-                # # 交易时间开始初始化
-                # if not init_limit_prices():
-                #     print("初始化涨跌停价格失败")
-                #     time.sleep(60)  # 失败后等待1分钟重试
-                #     continue
+                # 检查是否为交易时间    
+                # 交易时间开始初始化
+                if not init_limit_prices():
+                    print("初始化涨跌停价格失败")
+                    time.sleep(60)  # 失败后等待1分钟重试
+                    continue
                 # if not is_trade_time():
                 #     current_time = datetime.now().strftime('%H:%M:%S')
                 #     log(f"当前时间 {current_time} 非交易时间，等待中...")
@@ -952,7 +952,7 @@ class QuotesManager:
             current_time_str = current_time.strftime('%H:%M:%S')
             
             # 判断是否需要保存到数据库（每5分钟保存一次）
-            should_save = current_time.minute % 5 == 0
+            should_save = current_time.minute % 5 == 0 and is_trade_time()
             
             quotes = []
             # 首次获取时从数据库读取

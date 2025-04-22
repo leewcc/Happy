@@ -207,11 +207,15 @@ function loadMarketOverview() {
 }
 
 function loadStockList() {
+    // 获取当前的排序状态
+    const sortColumn = $('.sortable.asc, .sortable.desc').data('sort');
+    const order = $('.sortable.asc').length > 0 ? 'asc' : 'desc';
+    
     // 构建查询参数
     const params = {};
-    if (currentSortColumn) {
-        params.sort_by = currentSortColumn;
-        params.order = isAscending ? 'asc' : 'desc';
+    if (sortColumn) {
+        params.sort_by = sortColumn;
+        params.order = order;
     }
     
     // 添加参数到URL
@@ -467,7 +471,7 @@ function updateStockList(data) {
 const rankStyle = document.createElement('style');
 rankStyle.textContent = `
     .rank-concept-cell {
-        max-width: 300px;
+        max-width: 600px;
         overflow-wrap: break-word;
         word-wrap: break-word;
         word-break: break-all;
@@ -650,20 +654,17 @@ function stopRealTimeUpdate() {
 function startRealTimeUpdate() {
     console.log('尝试启动实时更新');
     
-    // 先清除可能存在的旧定时器
     stopRealTimeUpdate();
     
-    // 立即更新一次数据
     const activeTab = $('.nav-link.active').data('tab');
     loadData(activeTab);
     
-    // 设置新的定时更新
     window.dataRefreshInterval = setInterval(function() {
         const activeTab = $('.nav-link.active').data('tab');
         console.log('定时刷新当前页面:', activeTab);
         
         if (activeTab === 'limit' && typeof updateLimitAnalysis === 'function') {
-            updateLimitAnalysis();
+            updateLimitAnalysis(null, true);  // null 和 true 表示实时数据
         } else {
             loadData(activeTab);
         }
@@ -699,12 +700,17 @@ function loadHistoricalData(date) {
             
         case 'limit':
             if (typeof updateLimitAnalysis === 'function') {
-                updateLimitAnalysis(formattedDate);
+                updateLimitAnalysis(formattedDate, false);  // false 表示非实时数据
+            } else {
+                console.error('updateLimitAnalysis function not found');
             }
             break;
             
         case 'sector':
             loadSectorMap(formattedDate);
             break;
+            
+        default:
+            console.warn('未知的页面类型:', activeTab);
     }
 } 
