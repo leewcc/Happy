@@ -457,8 +457,8 @@ class QuotesManager:
         """启动行情管理器"""
         while True:
             try:
-                # 检查是否为交易时间    
-                # 交易时间开始初始化
+                # # 检查是否为交易时间    
+                # # 交易时间开始初始化
                 if not init_limit_prices():
                     print("初始化涨跌停价格失败")
                     time.sleep(60)  # 失败后等待1分钟重试

@@ -303,7 +303,7 @@ function initLimitAnalysis() {
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.error('请求失败:', textStatus, errorThrown);
         });
-    };
+    }
 
     // 首次加载数据
     updateLimitAnalysis();

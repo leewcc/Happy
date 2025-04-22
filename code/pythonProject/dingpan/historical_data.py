@@ -217,14 +217,14 @@ def get_historical_limit_analysis(date):
         """
         cursor.execute(stats_sql, (date,))
         stats_results = cursor.fetchall()
-        
+        print(stats_results)
         # 转换统计数据为所需格式
         statistics = {
             'limit_up_count': 0,
             'gem_limit_up_count': 0,
             'broken_limit_count': 0,
             'limit_down_count': 0,
-            'continuous_limit_count': 0
+            'continuous_count': 0
         }
         
         for stat in stats_results:
@@ -236,55 +236,8 @@ def get_historical_limit_analysis(date):
                 statistics['broken_limit_count'] = stat['count']
             elif stat['item'] == 'limit_down_count':
                 statistics['limit_down_count'] = stat['count']
-            elif stat['item'] == 'continuous_count':
-                statistics['continuous_limit_count'] = stat['count']
-        
-        # 获取涨停、跌停和炸板股票列表
-        stocks_sql = """
-            SELECT 
-                ls.ts_code, 
-                s.name, 
-                d.change_pct,
-                ls.limit_times as continuous_days,
-                ls.first_limit_time,
-                d.amount,
-                s.industry, 
-                GROUP_CONCAT(DISTINCT cs.sector_name) as concepts,
-                ls.limit_type,
-                ls.is_broken
-            FROM limit_stocks ls
-            LEFT JOIN stock s ON ls.ts_code = s.stock_code
-            LEFT JOIN daily d ON ls.ts_code = d.ts_code AND ls.trade_date = d.trade_date
-            LEFT JOIN concept_stock cs ON ls.ts_code = cs.stock_code
-            WHERE ls.trade_date = %s
-            GROUP BY ls.ts_code
-        """
-        cursor.execute(stocks_sql, (date,))
-        stocks = cursor.fetchall()
-        
-        # 从内存中获取行业和概念信息
-        quotes_manager = QuotesManager()
-        stock_info_cache = quotes_manager.stock_info_cache
-        
-        # 处理股票列表数据
-        stocks_list = []
-        for stock in stocks:
-            stock_code = stock['ts_code'].split('.')[0]
-            info = stock_info_cache.get(stock_code, {'industry': '-', 'concepts': '-'})
-            
-            stock_data = {
-                'ts_code': stock['ts_code'],
-                'name': stock['name'],
-                'change_pct': stock['change_pct'],
-                'continuous_days': stock['continuous_days'] if stock['is_limit_up'] else 0,
-                'first_limit_time': '-',  # 历史数据没有首次涨停时间
-                'amount': float(stock['amount']) / 100000000,
-                'industry': info['industry'],
-                'concepts': info['concepts'],
-                'type': 'limit_up' if stock['is_limit_up'] else 'limit_down' if stock['is_limit_down'] else 'broken',
-                'is_broken': bool(stock['is_board_broken'])
-            }
-            stocks_list.append(stock_data)
+            elif stat['item'] == 'consecutive_count':
+                statistics['continuous_count'] = stat['count']
         
         # 获取上一个交易日统计
         last_date_sql = """
@@ -300,17 +253,99 @@ def get_historical_limit_analysis(date):
         last_trade_date_stats = {
             'trade_date': last_stats[0]['trade_date'] if last_stats else None,
             'limit_up_count': 0,
+            'gem_limit_up_count': 0,
             'broken_count': 0,
+            'limit_down_count': 0,
             'continuous_count': 0
         }
         
         for stat in last_stats:
             if stat['item'] == 'limit_up_count':
                 last_trade_date_stats['limit_up_count'] = stat['count']
+            elif stat['item'] == 'gem_limit_up_count':
+                last_trade_date_stats['gem_limit_up_count'] = stat['count']
             elif stat['item'] == 'broken_count':
                 last_trade_date_stats['broken_count'] = stat['count']
-            elif stat['item'] == 'continuous_count':
+            elif stat['item'] == 'limit_down_count':
+                last_trade_date_stats['limit_down_count'] = stat['count']
+            elif stat['item'] == 'consecutive_count':
                 last_trade_date_stats['continuous_count'] = stat['count']
+        
+        # 直接从 limit_stocks 获取数据
+        stocks_sql = """
+            SELECT 
+                ts_code,
+                name,
+                pct_chg as change_pct,
+                limit_times as continuous_days,
+                first_time as first_limit_time,
+                amount,
+                limit_type,
+                open_times > 0 as is_broken
+            FROM limit_stocks
+            WHERE trade_date = %s
+        """
+        cursor.execute(stocks_sql, (date,))
+        stocks = cursor.fetchall()
+        
+        # 使用全局的 quotes_manager 获取行业和概念信息
+        quotes_manager = get_quotes_manager()
+        stock_info_cache = quotes_manager.stock_info_cache
+        
+        # 处理股票列表数据
+        stocks_list = []
+        # 用于统计概念数据
+        concept_data = {}
+        
+        for stock in stocks:
+            ts_code = stock['ts_code']
+            info = stock_info_cache.get(ts_code, {'industry': '-', 'concepts': '-'})
+            
+            stock_data = {
+                'ts_code': ts_code,
+                'name': stock['name'],
+                'change_pct': float(stock['change_pct']) if stock['change_pct'] is not None else 0,
+                'continuous_days': stock['continuous_days'] or 0,
+                'first_limit_time': stock['first_limit_time'] or '-',
+                'amount': float(stock['amount']) / 100000000 if stock['amount'] is not None else 0,  # 转换为亿元
+                'industry': info['industry'],
+                'concepts': info['concepts'],
+                'type': 'limit_up' if stock['limit_type'] == 'U' else 'limit_down' if stock['limit_type'] == 'D' else 'broken',
+                'is_broken': bool(stock['is_broken'])
+            }
+            stocks_list.append(stock_data)
+            
+            # 统计概念数据
+            if info['concepts'] != '-':
+                concepts = info['concepts'].split(',')
+                for concept in concepts:
+                    concept = concept.strip()
+                    if not concept:
+                        continue
+                        
+                    if concept not in concept_data:
+                        concept_data[concept] = {
+                            'concept': concept,
+                            'limit_up_count': 0,
+                            'continuous_count': 0,
+                            'broken_count': 0,
+                            'limit_down_count': 0,
+                            'gem_limit_up_count': 0
+                        }
+                    
+                    if stock['limit_type'] == 'U':
+                        concept_data[concept]['limit_up_count'] += 1
+                        if stock['continuous_days'] and stock['continuous_days'] > 1:
+                            concept_data[concept]['continuous_count'] += 1
+                    elif stock['limit_type'] == 'D':
+                        concept_data[concept]['limit_down_count'] += 1
+                    
+                    if stock['is_broken']:
+                        concept_data[concept]['broken_count'] += 1
+        
+        # 转换概念统计为列表并排序
+        concept_stats = list(concept_data.values())
+        concept_stats.sort(key=lambda x: x['limit_up_count'], reverse=True)
         
         return {
             'statistics': statistics,
