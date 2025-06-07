@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 import time  # 新增
 
 # 设置 Tushare Pro 的 token
-ts.set_token('ne576cb10ae327812a88f58b758c3233e23')
+ts.set_token('r29621661678ed93411a13147c534a0b562')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -347,7 +347,7 @@ if __name__ == "__main__":
             print(f"开始执行数据加载任务，当前时间: {current_time.strftime('%H:%M:%S')}")
         
             # 指定日期，格式为 'YYYYMMDD'
-            specified_date = "20250422"
+            specified_date = "20250606"
             specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
             sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 
@@ -357,6 +357,7 @@ if __name__ == "__main__":
                     # 检查数据是否已存在
                     if check_data_exists(stock_code, specified_date):
                         print(f"{stock_code} 在 {specified_date} 的数据已存在，跳过。")
+                        # 更新成交额移动平均数据
                         continue
 
                     # 获取指定日期前 60 天内的日线数据

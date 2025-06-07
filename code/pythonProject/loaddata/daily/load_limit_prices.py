@@ -4,7 +4,7 @@ import pymysql
 from datetime import datetime, timedelta
 
 # 设置tushare的token
-ts.set_token('ne576cb10ae327812a88f58b758c3233e23')
+ts.set_token('r29621661678ed93411a13147c534a0b562')
 pro = ts.pro_api()
 
 # 数据库配置
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # 可以通过命令行参数传入日期，这里演示几种用法
     
     # 获取单个日期的数据
-    load_limit_prices('20250415')
+    load_limit_prices('20250508')
     
     # 获取日期范围的数据
     # load_limit_prices_by_date_range('20240401', '20240403') 

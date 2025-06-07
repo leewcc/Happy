@@ -15,6 +15,7 @@ def index():
 @app.route('/api/stocks', methods=['POST'])
 def get_stocks():
     filters = request.json
+    # 确保能处理新的 upper_shadow 参数
     filtered_stocks = filter_stocks(filters)
     return jsonify(filtered_stocks)
 

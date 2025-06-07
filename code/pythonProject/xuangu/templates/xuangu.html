@@ -80,6 +80,18 @@
                 </div>
             </div>
 
+            <!-- 上影线 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">📊</span>
+                    <label>上影线</label>
+                </div>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="upper_shadow" class="toggle-input">
+                    <label for="upper_shadow" class="toggle-label"></label>
+                </div>
+            </div>
+
             <!-- 低吸战法 -->
             <div class="filter-item">
                 <div class="filter-label">
@@ -582,7 +594,8 @@
                 turnover_days: document.getElementById('turnover_days').value,
                 turnover_amount: document.getElementById('turnover_amount').value,
                 ma_trend: document.getElementById('ma_trend').checked,
-                dip_buy: document.getElementById('dip_buy').checked
+                dip_buy: document.getElementById('dip_buy').checked,
+                upper_shadow: document.getElementById('upper_shadow').checked
             };
 
             axios.post('/api/stocks', filters)

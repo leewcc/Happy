@@ -366,6 +366,27 @@ def filter_stocks(filters):
         result_stocks = set(df_ma['stock_code'])
         logger.info(f"均线多头发散筛选后剩余股票数: {len(result_stocks)}")
 
+    # 上影线筛选
+    if filters.get('upper_shadow'):
+        query = """
+        SELECT DISTINCT t.stock_code
+        FROM daily_data t
+        WHERE t.stock_code IN %(stock_codes)s
+        AND t.trade_date = %(latest_date)s
+        AND t.high_price/t.close_price > 1.05  -- 上影线条件
+        AND t.close_price > t.open_price      -- 收盘价大于开盘价
+        AND t.close_price > t.previous_close_price
+        """
+        params = {
+            'stock_codes': tuple(result_stocks),
+            'latest_date': latest_date
+        }
+        logger.info(f"SQL - 上影线筛选: {query}")
+        logger.info(f"参数: {params}")
+        df_shadow = pd.read_sql(query, engine, params=params)
+        result_stocks = set(df_shadow['stock_code'])
+        logger.info(f"上影线筛选后剩余股票数: {len(result_stocks)}")
+
     # 获取最终结果的详细信息
     if result_stocks:
         # 1. 从 daily_data 获取基础数据
