@@ -4,7 +4,7 @@ import pymysql
 from datetime import datetime, timedelta
 
 # 设置tushare的token
-ts.set_token('r29621661678ed93411a13147c534a0b562')
+ts.set_token('x0939bc945cb5da1e5785097a469bc6ed99')
 pro = ts.pro_api()
 
 # 数据库配置

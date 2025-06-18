@@ -6,7 +6,7 @@ import time
 from get_limit_stocks_concepts import main as process_concepts
 
 # 设置 Tushare Pro 的 token
-ts.set_token('r29621661678ed93411a13147c534a0b562')  # 替换为你的token
+ts.set_token('x0939bc945cb5da1e5785097a469bc6ed99')  # 替换为你的token
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -282,5 +282,5 @@ def main(trade_date=None):
 
 if __name__ == "__main__":
     # 可以传入指定日期，格式为'YYYYMMDD'
-    main('20250606')
+    main('20250618')
     
