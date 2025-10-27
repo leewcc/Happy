@@ -1,4 +1,5 @@
-import chinadata.ca_data as ts
+# import chinadata.ca_data as ts
+import tudata as ts
 import pandas as pd
 from datetime import datetime
 import pymysql
@@ -6,7 +7,8 @@ import time
 from get_limit_stocks_concepts import main as process_concepts
 
 # 设置 Tushare Pro 的 token
-ts.set_token('x0939bc945cb5da1e5785097a469bc6ed99')  # 替换为你的token
+# ts.set_token('1ab08efbf57546eab5a62499848c542a')
+ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -282,5 +284,5 @@ def main(trade_date=None):
 
 if __name__ == "__main__":
     # 可以传入指定日期，格式为'YYYYMMDD'
-    main('20250618')
+    main('20251024')
     

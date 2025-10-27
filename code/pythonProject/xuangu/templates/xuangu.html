@@ -104,6 +104,18 @@
                 </div>
             </div>
 
+            <!-- 强势回调20日线 -->
+            <div class="filter-item">
+                <div class="filter-label">
+                    <span class="icon">💪</span>
+                    <label>强势回调20日线</label>
+                </div>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="strong_pullback_20" class="toggle-input">
+                    <label for="strong_pullback_20" class="toggle-label"></label>
+                </div>
+            </div>
+
             <button class="search-button" onclick="filterStocks()">
                 <span class="button-icon">🔍</span>
                 开始筛选
@@ -595,7 +607,8 @@
                 turnover_amount: document.getElementById('turnover_amount').value,
                 ma_trend: document.getElementById('ma_trend').checked,
                 dip_buy: document.getElementById('dip_buy').checked,
-                upper_shadow: document.getElementById('upper_shadow').checked
+                upper_shadow: document.getElementById('upper_shadow').checked,
+                strong_pullback_20: document.getElementById('strong_pullback_20').checked
             };
 
             axios.post('/api/stocks', filters)

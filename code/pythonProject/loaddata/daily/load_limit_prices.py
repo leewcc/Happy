@@ -1,10 +1,11 @@
-import chinadata.ca_data as ts
+# import chinadata.ca_data as ts
+import tudata as ts
 import pandas as pd
 import pymysql
 from datetime import datetime, timedelta
 
 # 设置tushare的token
-ts.set_token('x0939bc945cb5da1e5785097a469bc6ed99')
+ts.set_token('3463b38b6b244e9c8549e599f4430b92')
 pro = ts.pro_api()
 
 # 数据库配置
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     # 可以通过命令行参数传入日期，这里演示几种用法
     
     # 获取单个日期的数据
-    load_limit_prices('20250508')
+    load_limit_prices('20250512')
     
     # 获取日期范围的数据
     # load_limit_prices_by_date_range('20240401', '20240403') 

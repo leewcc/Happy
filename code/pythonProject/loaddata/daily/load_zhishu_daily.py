@@ -1,4 +1,6 @@
-import  chinadata.ca_data as ts
+# import  chinadata.ca_data as ts
+import tudata as ts
+# import local as ts
 import pymysql
 import pandas as pd
 from ta.trend import SMAIndicator, MACD
@@ -7,7 +9,7 @@ from ta.momentum import StochasticOscillator
 from datetime import datetime, timedelta
 
 # 设置 Tushare Pro 的 token
-ts.set_token('x0939bc945cb5da1e5785097a469bc6ed99')
+ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -112,8 +114,7 @@ if __name__ == "__main__":
     index_codes = [row[0] for row in cursor.fetchall()]
 
     # 指定日期，格式为 'YYYYMMDD'
-    specified_date = '20250618'
-
+    specified_date = '20251024'
     for ts_code in index_codes:
         try:
             # 获取近 120 天的日线数据

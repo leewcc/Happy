@@ -1,9 +1,9 @@
-import chinadata.ca_data as ts
+from daily import tushare_data as ts
 import pymysql
 import time
 
 # 设置 Tushare Pro 的 token
-ts.set_token('i593c24d0926bfb845f136082a335d64f71')
+ts.set_token('1ab08efbf57546eab5a62499848c542a')
 pro = ts.pro_api()
 
 # 数据库连接配置
@@ -145,7 +145,7 @@ def save_concept_stocks_to_db(concept_code, concept_name):
 if __name__ == "__main__":
     # 示例用法
     # 1. 搜索包含特定关键词的概念
-    keyword = "海工装备"  # 可以修改为你想搜索的关键词
+    keyword = "雅下水电概念"  # 可以修改为你想搜索的关键词
     print(f"\n搜索包含 '{keyword}' 的概念板块:")
     concepts = search_concept(keyword)
     for concept in concepts:

@@ -387,6 +387,54 @@ def filter_stocks(filters):
         result_stocks = set(df_shadow['stock_code'])
         logger.info(f"上影线筛选后剩余股票数: {len(result_stocks)}")
 
+    # 强势股回调20日线筛选
+    if filters.get('strong_pullback_20') and result_stocks:
+        # 逻辑：最新收盘价小于近10天最高价的85%（回撤>15%），并且大于MA20且小于MA10
+        query = """
+        WITH last_10 AS (
+            SELECT 
+                stock_code,
+                MAX(high_price) AS high_10
+            FROM (
+                SELECT 
+                    stock_code,
+                    high_price,
+                    ROW_NUMBER() OVER (PARTITION BY stock_code ORDER BY trade_date DESC) AS rn
+                FROM daily_data
+                WHERE stock_code IN %(stock_codes)s
+                AND trade_date <= %(latest_date)s
+            ) t
+            WHERE t.rn <= 10
+            GROUP BY stock_code
+        ),
+        today AS (
+            SELECT 
+                stock_code,
+                close_price,
+                ma_10,
+                ma_20
+            FROM daily_data
+            WHERE stock_code IN %(stock_codes)s
+            AND trade_date = %(latest_date)s
+        )
+        SELECT y.stock_code
+        FROM today y
+        JOIN last_10 h ON y.stock_code = h.stock_code
+        WHERE 
+            y.close_price <= h.high_10 * 0.9
+            AND y.close_price > y.ma_20
+            AND y.close_price < y.ma_10
+        """
+        params = {
+            'stock_codes': tuple(result_stocks),
+            'latest_date': latest_date
+        }
+        logger.info(f"SQL - 强势回调20日线筛选: {query}")
+        logger.info(f"参数: {params}")
+        df_pullback = pd.read_sql(query, engine, params=params)
+        result_stocks = set(df_pullback['stock_code'])
+        logger.info(f"强势回调20日线筛选后剩余股票数: {len(result_stocks)}")
+
     # 获取最终结果的详细信息
     if result_stocks:
         # 1. 从 daily_data 获取基础数据

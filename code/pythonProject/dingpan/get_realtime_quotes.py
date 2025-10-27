@@ -90,7 +90,6 @@ def init_limit_prices():
     try:
         today = datetime.now().strftime('%Y%m%d')
         print(f"正在从数据库获取 {today} 的涨跌停价格数据...")
-        
         # 连接数据库
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -462,11 +461,11 @@ class QuotesManager:
                     print("初始化涨跌停价格失败")
                     time.sleep(60)  # 失败后等待1分钟重试
                     continue
-                if not is_trade_time():
-                    current_time = datetime.now().strftime('%H:%M:%S')
-                    log(f"当前时间 {current_time} 非交易时间，等待中...")
-                    time.sleep(60)  # 每分钟检查一次
-                    continue
+                # if not is_trade_time():
+                #     current_time = datetime.now().strftime('%H:%M:%S')
+                #     log(f"当前时间 {current_time} 非交易时间，等待中...")
+                #     time.sleep(60)  # 每分钟检查一次
+                #     continue
                 
                 if not init_stock_list():
                     print("初始化股票列表失败")

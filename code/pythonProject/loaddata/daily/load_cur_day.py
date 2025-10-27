@@ -1,4 +1,5 @@
-import chinadata.ca_data as ts
+# import chinadata.ca_data as ts
+import tudata as ts
 import pymysql
 import pandas as pd
 from ta.trend import SMAIndicator, MACD
@@ -14,11 +15,20 @@ import threading
 from queue import Queue
 
 # 设置 Tushare Pro 的 token
-ts.set_token('x0939bc945cb5da1e5785097a469bc6ed99')
+ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
+# ts.set_token('le2937d38d26f5322ae6096286072faf933')
 pro = ts.pro_api()
 
 # 创建线程本地存储
 thread_local = threading.local()
+
+def get_pro():
+    """
+    获取线程本地的 Tushare Pro 实例
+    """
+    if not hasattr(thread_local, "pro") or thread_local.pro is None:
+        thread_local.pro = ts.pro_api()
+    return thread_local.pro
 
 def get_db_connection():
     """
@@ -85,6 +95,7 @@ def get_all_stock_codes():
     :return: 包含所有股票代码的列表
     """
     try:
+        pro = get_pro()
         data = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name')
         print(data)
         all_codes = data[['ts_code', 'symbol', 'name']].values.tolist()
@@ -398,6 +409,7 @@ def process_stock_batch(stock_batch, specified_date, sixty_days_ago):
                     continue
 
                 # 获取指定日期前 60 天内的日线数据
+                pro = get_pro()
                 daily_data = pro.daily(ts_code=ts_code, start_date=sixty_days_ago, end_date=specified_date)
                 if not daily_data.empty:
                     # 按日期升序排序
@@ -458,7 +470,7 @@ if __name__ == "__main__":
                 print(f"开始执行数据加载任务，当前时间: {current_time.strftime('%H:%M:%S')}")
             
                 # 指定日期，格式为 'YYYYMMDD'
-                specified_date = "20250618"
+                specified_date = "20251024"
                 specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
                 sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 
@@ -466,11 +478,11 @@ if __name__ == "__main__":
                 all_codes = get_all_stock_codes()
                 
                 # 将股票列表分成40个批次
-                batch_size = max(1, len(all_codes) // 40)
+                batch_size = max(1, len(all_codes) // 3)
                 stock_batches = [all_codes[i:i + batch_size] for i in range(0, len(all_codes), batch_size)]
                 
                 # 使用线程池处理数据
-                with ThreadPoolExecutor(max_workers=40) as executor:
+                with ThreadPoolExecutor(max_workers=3) as executor:
                     try:
                         # 创建所有任务
                         futures = [
