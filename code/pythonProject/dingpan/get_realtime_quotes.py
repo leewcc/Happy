@@ -1,3 +1,8 @@
+import sys
+import os
+# 添加项目根目录到 Python 路径
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 import tushare as ts
 import pandas as pd
 import threading
@@ -14,8 +19,8 @@ pro = ts.pro_api()
 # 数据库配置
 DB_CONFIG = {
     'host': 'localhost',
-    'user': 'leewcc',
-    'password': 'leewcc',
+    'user': 'root',
+    'password': 'root',
     'database': 'happy',
     'charset': 'utf8mb4'
 }
@@ -104,9 +109,7 @@ def init_limit_prices():
             cursor.close()
             conn.close()
             
-            # 使用完整路径导入
-            import sys
-            sys.path.append('C:/happy/Happy/code/pythonProject')
+            # 导入涨跌停价格加载模块
             from loaddata.daily.load_limit_prices import load_limit_prices
             
             if load_limit_prices(today):
@@ -138,10 +141,16 @@ def init_limit_prices():
         return False
         
     finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        if 'cursor' in locals() and cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if 'conn' in locals() and conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def init_stock_list():
     """从数据库初始化股票列表分组"""
@@ -180,10 +189,16 @@ def init_stock_list():
         return False
         
     finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        if 'cursor' in locals() and cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if 'conn' in locals() and conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def calculate_limits(row):
     """计算是否涨跌停"""
@@ -1023,7 +1038,14 @@ class QuotesManager:
             stock_codes_to_fetch = [code for code in stock_list if not any(q['ts_code'] == code for q in quotes)]
             if stock_codes_to_fetch:
                 stock_codes = ','.join(stock_codes_to_fetch)
+                _start_time = time.time()
                 df = ts.realtime_quote(stock_codes)
+                _elapsed_ms = (time.time() - _start_time) * 1000
+                try:
+                    _returned = 0 if df is None or df.empty else len(df)
+                except Exception:
+                    _returned = 0
+                log(f"获取实时行情: 请求 {len(stock_codes_to_fetch)} 条, 返回 {_returned} 条, 耗时 {round(_elapsed_ms, 1)} ms")
                 if df is not None and not df.empty:
                     conn = None
                     cursor = None
@@ -1298,10 +1320,16 @@ def get_stock_industry(ts_code):
         log(f"获取股票 {ts_code} 行业失败: {str(e)}")
         return '-'
     finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        if 'cursor' in locals() and cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if 'conn' in locals() and conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def get_stock_concepts(ts_code):
     """获取股票概念"""
@@ -1322,10 +1350,16 @@ def get_stock_concepts(ts_code):
         log(f"获取股票 {ts_code} 概念失败: {str(e)}")
         return '-'
     finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        if 'cursor' in locals() and cursor:
+            try:
+                cursor.close()
+            except:
+                pass
+        if 'conn' in locals() and conn:
+            try:
+                conn.close()
+            except:
+                pass
 
 def normalize_concept(concept):
     """合并同义概念"""

@@ -11,8 +11,8 @@ pro = ts.pro_api()
 # 数据库配置
 DB_CONFIG = {
     'host': 'localhost',
-    'user': 'leewcc',
-    'password': 'leewcc',
+    'user': 'root',
+    'password': 'root',
     'database': 'happy',
     'charset': 'utf8mb4'
 }

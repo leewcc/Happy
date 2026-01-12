@@ -13,8 +13,8 @@ app = Flask(__name__)
 # 数据库配置
 DB_CONFIG = {
     'host': 'localhost',
-    'user': 'leewcc',
-    'password': 'leewcc',
+    'user': 'root',
+    'password': 'root',
     'database': 'happy',
     'charset': 'utf8mb4'
 }
@@ -256,15 +256,24 @@ def stock_kline(ts_code):
             kline_df = kline_df.sort_values('trade_date')
             kline_df = kline_df.reset_index(drop=True)
             
-            # 检查今日是否已有数据
+            # 检查今日是否已有数据（检查整个DataFrame中是否包含今天的日期）
             today_date = datetime.now().strftime('%Y-%m-%d')
-            has_today_data = not kline_df.empty and kline_df['trade_date'].iloc[-1] == today_date
+            # 检查整个DataFrame中是否包含今天的日期，而不仅仅是最后一条
+            has_today_data = not kline_df.empty and today_date in kline_df['trade_date'].values
+            
+            if has_today_data:
+                print(f"数据库中已包含今日({today_date})的数据，跳过实时数据合并")
+            else:
+                print(f"数据库中未找到今日({today_date})的数据，将从实时数据获取")
             
             # 如果今日没有数据，则从实时数据获取
             if not has_today_data:
                 today_quote = quotes_map.get(ts_code)
                 
                 if today_quote:
+                    # 再次确认：移除可能存在的今天的数据（双重保险）
+                    kline_df = kline_df[kline_df['trade_date'] != today_date]
+                    
                     print(f"添加今日({today_date})实时数据")
                     today_data = {
                         'trade_date': today_date,
@@ -278,6 +287,15 @@ def stock_kline(ts_code):
                     
                     today_df = pd.DataFrame([today_data])
                     kline_df = pd.concat([kline_df, today_df], ignore_index=True)
+                    
+                    # 检查合并后是否有重复日期
+                    duplicate_dates = kline_df[kline_df.duplicated(subset=['trade_date'], keep=False)]
+                    if not duplicate_dates.empty:
+                        print(f"警告: 发现重复日期数据: {duplicate_dates['trade_date'].unique()}")
+                        # 保留最后一条（最新的实时数据）
+                        kline_df = kline_df.drop_duplicates(subset=['trade_date'], keep='last')
+                        kline_df = kline_df.sort_values('trade_date').reset_index(drop=True)
+                        print(f"已移除重复数据，保留最后一条记录")
                     
                     # 计算最新的均线（只有添加了今日数据才需要计算）
                     closes = kline_df['close'].astype(float).tolist()
@@ -332,4 +350,4 @@ if __name__ == '__main__':
         print("Waiting for quotes manager to initialize...")
     
     print("Quotes manager initialized, starting web server...")
-    app.run(debug=True, port=8888) 
+    app.run(debug=True, port=8888, use_reloader=False) 

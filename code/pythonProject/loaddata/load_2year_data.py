@@ -1,4 +1,4 @@
-import chinadata.ca_data as ts
+import tudata as ts
 import pymysql
 import pandas as pd
 from ta.trend import SMAIndicator, MACD
@@ -9,7 +9,7 @@ from decimal import Decimal
 import traceback
 
 # 设置 Tushare Pro 的 token
-ts.set_token('r29621661678ed93411a13147c534a0b562')
+ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
 pro = ts.pro_api()
 
 # 连接到 MySQL 数据库
@@ -23,7 +23,7 @@ conn = pymysql.connect(
 cursor = conn.cursor()
 
 # 计算近 5 年的日期范围
-five_years_ago = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
+five_years_ago = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
 today = datetime.now().strftime('%Y%m%d')
 
 def get_all_stock_codes():

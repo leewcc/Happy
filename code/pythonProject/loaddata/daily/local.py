@@ -59,7 +59,7 @@ class pro_api:
         Returns:
         pd.DataFrame: A DataFrame containing the fetched stock data.
         """
-        url = "http://114.132.244.63/api-tushare/tushare"
+        url = "http://114.132.244.63/api-new/tushare"
 
         params = {
             'token': get_token(),

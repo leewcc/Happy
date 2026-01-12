@@ -15,7 +15,7 @@ import threading
 from queue import Queue
 
 # 设置 Tushare Pro 的 token
-ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
+ts.set_token('fd367c69db694ae9af1a6788fa335afd')
 # ts.set_token('le2937d38d26f5322ae6096286072faf933')
 pro = ts.pro_api()
 
@@ -37,8 +37,8 @@ def get_db_connection():
     if not hasattr(thread_local, "conn") or thread_local.conn is None:
         thread_local.conn = pymysql.connect(
             host='localhost',
-            user='leewcc',
-            password='leewcc',
+            user='root',
+            password='root',
             database='happy',
             charset='utf8mb4',
             autocommit=False
@@ -470,12 +470,22 @@ if __name__ == "__main__":
                 print(f"开始执行数据加载任务，当前时间: {current_time.strftime('%H:%M:%S')}")
             
                 # 指定日期，格式为 'YYYYMMDD'
-                specified_date = "20251024"
+                specified_date = "20251216"
                 specified_date_obj = datetime.strptime(specified_date, '%Y%m%d')
                 sixty_days_ago = (specified_date_obj - timedelta(days=120)).strftime('%Y%m%d')
 
-                # 获取所有股票代码
+                # 获取所有股票代码4
                 all_codes = get_all_stock_codes()
+                
+                # 单独获取300456
+                target_code = '300456'
+                target_stock = [code for code in all_codes if code[1] == target_code]  # code[1] 是 symbol
+                if target_stock:
+                    print(f"单独处理股票 {target_code}...")
+                    process_stock_batch(target_stock, specified_date, sixty_days_ago)
+                    print(f"股票 {target_code} 处理完成")
+                else:
+                    print(f"未找到股票代码 {target_code}")
                 
                 # 将股票列表分成40个批次
                 batch_size = max(1, len(all_codes) // 3)

@@ -1,4 +1,4 @@
-import chinadata.ca_data as ts
+import tudata as ts
 import pandas as pd
 from datetime import datetime
 import pymysql

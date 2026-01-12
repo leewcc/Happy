@@ -6,7 +6,7 @@ import pymysql
 import time
 
 # 设置 Tushare Pro 的 token
-ts.set_token('3463b38b6b244e9c8549e599f4430b92')
+ts.set_token('426a56d8a78c4b96a41b1c5f58b8120d')
 # ts.set_token('le2937d38d26f5322ae6096286072faf933')
 pro = ts.pro_api()
 

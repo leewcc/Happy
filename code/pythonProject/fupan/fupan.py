@@ -799,8 +799,18 @@ def get_market_analysis(target_date=None, previous_date=None, pre_previous_date=
             'yesterday_stats': {},
             'pre_consecutive_stocks': [],
             'yesterday_consecutive_stocks': [],
-            'updown_trend': {},
-            'limit_trend': {}
+            'updown_trend': {
+                'dates': [],
+                'up_counts': [],
+                'down_counts': []
+            },
+            'limit_trend': {
+                'dates': [],
+                'limit_up_counts': [],
+                'limit_down_counts': [],
+                'broken_counts': [],
+                'consecutive_counts': []
+            }
         }
 
 def group_consecutive_stocks(stocks):

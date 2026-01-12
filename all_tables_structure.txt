@@ -369,7 +369,9 @@ CREATE TABLE IF NOT EXISTS realtime_quotes (
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     first_limit_up_time TIME COMMENT '首次涨停时间',
     INDEX idx_ts_code (ts_code),
-    INDEX idx_trade_date (trade_date)
+    UNIQUE INDEX uk_ts_code_trade_date (ts_code, trade_date) COMMENT '股票代码+交易日期联合唯一索引，确保同一股票同日无重复记录',
+    -- 保留 trade_date 单列索引，支持单独按日期查询
+    INDEX idx_trade_date (trade_date) COMMENT '交易日期单列索引，支持按日期筛选所有股票'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='股票实时行情';
 
 CREATE TABLE IF NOT EXISTS stock_limit_prices (

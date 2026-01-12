@@ -1,0 +1,8 @@
+Flask==2.3.3
+tushare==1.2.89
+pandas==2.1.4
+pymysql==1.1.0
+numpy==1.24.3
+requests==2.31.0
+python-dotenv==1.0.0
+huggingface_hub>=1.2.3

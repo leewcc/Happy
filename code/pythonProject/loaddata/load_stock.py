@@ -1,8 +1,8 @@
-import tushare as ts
+import tudata as ts
 import pymysql
 
 # 设置Tushare Pro的token
-ts.set_token('a880b180343bdf47d774721036dabac9f9dd7ec3952c80fbe8ba515e')
+ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
 pro = ts.pro_api()
 
 # 数据库连接配置

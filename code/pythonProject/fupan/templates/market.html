@@ -65,6 +65,51 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
         }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .chart-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .chart-summary {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .summary-value {
+            display: block;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .summary-value.text-red {
+            color: #f56c6c;
+        }
+        .summary-value.text-green {
+            color: #67c23a;
+        }
         .market-card {
             background: #f8f9fa;
             padding: 15px;
@@ -440,28 +485,32 @@
                 {% endfor %}
             </div>
 
-            <!-- 涨跌家数 -->
-            <div class="market-card">
+        </div>
+        
+        <!-- 图表区域：涨跌统计和涨跌幅分布并排显示 -->
+        <div class="charts-grid">
+            <!-- 涨跌统计 -->
+            <div class="chart-card">
                 <h3>涨跌统计</h3>
-                <div class="market-overview">
-                    <div class="overview-item">
-                        <span class="item-label">上涨家数</span>
-                        <span class="item-value text-red">{{ data.market_overview.up_count }}</span>
+                <div class="chart-summary">
+                    <div class="summary-item">
+                        <span class="summary-label">上涨家数</span>
+                        <span class="summary-value text-red">{{ data.market_overview.up_count }}</span>
                     </div>
-                    <div class="overview-item">
-                        <span class="item-label">下跌家数</span>
-                        <span class="item-value text-green">{{ data.market_overview.down_count }}</span>
+                    <div class="summary-item">
+                        <span class="summary-label">下跌家数</span>
+                        <span class="summary-value text-green">{{ data.market_overview.down_count }}</span>
                     </div>
                 </div>
-                <!-- 添加折线图容器 -->
-                <div id="updownTrendChart" style="width: 100%; height: 300px;"></div>
+                <div id="updownTrendChart" style="width: 100%; height: 350px;"></div>
             </div>
 
             <!-- 涨跌幅分布 -->
-            <div class="market-card">
+            <div class="chart-card">
                 <h3>涨跌幅分布</h3>
-                <div id="distribution" class="chart-container"></div>
+                <div id="distribution" style="width: 100%; height: 350px;"></div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -866,13 +915,15 @@
                 axisPointer: {
                     type: 'shadow'
                 },
-                formatter: '{b}: {c}只'
+                formatter: function(params) {
+                    return params[0].name + '<br/>' + params[0].marker + params[0].value + '只';
+                }
             },
             grid: {
-                top: '15%',
-                left: '3%',
+                top: '10%',
+                left: '10%',
                 right: '4%',
-                bottom: '12%',
+                bottom: '15%',
                 containLabel: true
             },
             xAxis: {
@@ -881,64 +932,61 @@
                 axisLabel: {
                     interval: 0,
                     rotate: 0,
-                    fontSize: 11,
-                    margin: 8
+                    fontSize: 12,
+                    color: '#666',
+                    margin: 10
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#ddd'
+                    }
                 }
             },
             yAxis: {
                 type: 'value',
                 name: '股票数量',
                 nameTextStyle: {
-                    padding: [0, 0, 0, 30]
+                    padding: [0, 0, 0, 20],
+                    color: '#666'
                 },
                 splitLine: {
                     lineStyle: {
-                        type: 'dashed'
+                        type: 'dashed',
+                        color: '#e0e0e0'
                     }
+                },
+                axisLabel: {
+                    fontSize: 12,
+                    color: '#666'
                 }
             },
             series: [{
                 name: '股票数量',
                 type: 'bar',
-                barWidth: '50%',
+                barWidth: '60%',
                 data: counts,
                 itemStyle: {
                     color: function(params) {
-                        if (params.dataIndex < 3) {  // 下跌区间
-                            return {
-                                type: 'linear',
-                                x: 0, y: 0, x2: 0, y2: 1,
-                                colorStops: [{
-                                    offset: 0, color: '#95eb7d'
-                                }, {
-                                    offset: 1, color: '#67c23a'
-                                }]
-                            };
-                        } else {  // 上涨区间
-                            return {
-                                type: 'linear',
-                                x: 0, y: 0, x2: 0, y2: 1,
-                                colorStops: [{
-                                    offset: 0, color: '#ff9a9a'
-                                }, {
-                                    offset: 1, color: '#f56c6c'
-                                }]
-                            };
+                        if (params.dataIndex < 3) {  // 下跌区间：<-7, -7~-3, -3~0
+                            return '#67c23a';  // 绿色
+                        } else {  // 上涨区间：0~3, 3~7, >7
+                            return '#f56c6c';  // 红色
                         }
                     },
-                    borderRadius: [3, 3, 0, 0]  // 柱状图顶部圆角
+                    borderRadius: [4, 4, 0, 0]  // 柱状图顶部圆角
                 },
                 label: {
                     show: true,
                     position: 'top',
                     fontSize: 12,
-                    color: '#666'
+                    color: '#333',
+                    fontWeight: 'normal'
                 },
                 emphasis: {
                     itemStyle: {
                         shadowBlur: 10,
                         shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        shadowColor: 'rgba(0, 0, 0, 0.3)'
                     }
                 }
             }]
@@ -1524,43 +1572,72 @@
 
         // 初始化上涨下跌趋势图
         var updownChart = echarts.init(document.getElementById('updownTrendChart'));
-        var dates = {{ data.updown_trend.dates|tojson|safe }};
-        var upCounts = {{ data.updown_trend.up_counts|tojson|safe }};
-        var downCounts = {{ data.updown_trend.down_counts|tojson|safe }};
+        var dates = {{ (data.updown_trend.dates if data.updown_trend and data.updown_trend.dates is not none else [])|tojson|safe }};
+        var upCounts = {{ (data.updown_trend.up_counts if data.updown_trend and data.updown_trend.up_counts is not none else [])|tojson|safe }};
+        var downCounts = {{ (data.updown_trend.down_counts if data.updown_trend and data.updown_trend.down_counts is not none else [])|tojson|safe }};
 
         var updownOption = {
             tooltip: {
                 trigger: 'axis',
                 axisPointer: {
                     type: 'cross'
+                },
+                formatter: function(params) {
+                    var result = params[0].name + '<br/>';
+                    params.forEach(function(item) {
+                        result += item.marker + item.seriesName + ': ' + item.value + '<br/>';
+                    });
+                    return result;
                 }
             },
             legend: {
                 data: ['上涨家数', '下跌家数'],
-                top: 10
+                top: 10,
+                itemGap: 20
             },
             grid: {
-                left: '3%',
+                left: '10%',
                 right: '4%',
-                bottom: '3%',
+                bottom: '10%',
+                top: '15%',
                 containLabel: true
             },
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
                 data: dates.map(date => {
-                    return date.substring(4, 6) + '-' + date.substring(6);  // 转换为 MM-DD 格式
+                    // 将日期格式从 YYYYMMDD 转换为 MM-DD
+                    if (date.length === 8) {
+                        return date.substring(4, 6) + '-' + date.substring(6);
+                    }
+                    return date;
                 }),
                 axisLabel: {
-                    formatter: '{value}'
+                    fontSize: 12,
+                    color: '#666'
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#ddd'
+                    }
                 }
             },
             yAxis: {
                 type: 'value',
+                name: '股票数量',
+                nameTextStyle: {
+                    padding: [0, 0, 0, 20],
+                    color: '#666'
+                },
                 splitLine: {
                     lineStyle: {
-                        type: 'dashed'
+                        type: 'dashed',
+                        color: '#e0e0e0'
                     }
+                },
+                axisLabel: {
+                    fontSize: 12,
+                    color: '#666'
                 }
             },
             series: [
@@ -1569,34 +1646,34 @@
                     type: 'line',
                     data: upCounts,
                     symbol: 'circle',
-                    symbolSize: 6,
+                    symbolSize: 8,
                     itemStyle: {
-                        color: '#fff',  // 点的填充色改为白色
+                        color: '#f56c6c',
                         borderColor: '#f56c6c',
-                        borderWidth: 1,
-                        borderType: 'solid'
+                        borderWidth: 2
                     },
                     lineStyle: {
-                        color: '#f56c6c',  // 明确指定线条颜色
+                        color: '#f56c6c',
                         width: 2
-                    }
+                    },
+                    smooth: false
                 },
                 {
                     name: '下跌家数',
                     type: 'line',
                     data: downCounts,
                     symbol: 'circle',
-                    symbolSize: 6,
+                    symbolSize: 8,
                     itemStyle: {
-                        color: '#fff',
+                        color: '#67c23a',
                         borderColor: '#67c23a',
-                        borderWidth: 1,
-                        borderType: 'solid'
+                        borderWidth: 2
                     },
                     lineStyle: {
-                        color: '#67c23a',  // 明确指定线条颜色
+                        color: '#67c23a',
                         width: 2
-                    }
+                    },
+                    smooth: false
                 }
             ]
         };
@@ -1606,15 +1683,16 @@
         // 响应窗口大小变化
         window.addEventListener('resize', function() {
             updownChart.resize();
+            chart.resize();  // 涨跌幅分布图表
         });
 
         // 初始化涨跌停趋势图
         var limitTrendChart = echarts.init(document.getElementById('limitTrendChart'));
-        var limitDates = {{ data.limit_trend.dates|tojson|safe }};
-        var limitUpCounts = {{ data.limit_trend.limit_up_counts|tojson|safe }};
-        var limitDownCounts = {{ data.limit_trend.limit_down_counts|tojson|safe }};
-        var brokenCounts = {{ data.limit_trend.broken_counts|tojson|safe }};
-        var consecutiveCounts = {{ data.limit_trend.consecutive_counts|tojson|safe }};
+        var limitDates = {{ (data.limit_trend.dates if data.limit_trend and data.limit_trend.dates is not none else [])|tojson|safe }};
+        var limitUpCounts = {{ (data.limit_trend.limit_up_counts if data.limit_trend and data.limit_trend.limit_up_counts is not none else [])|tojson|safe }};
+        var limitDownCounts = {{ (data.limit_trend.limit_down_counts if data.limit_trend and data.limit_trend.limit_down_counts is not none else [])|tojson|safe }};
+        var brokenCounts = {{ (data.limit_trend.broken_counts if data.limit_trend and data.limit_trend.broken_counts is not none else [])|tojson|safe }};
+        var consecutiveCounts = {{ (data.limit_trend.consecutive_counts if data.limit_trend and data.limit_trend.consecutive_counts is not none else [])|tojson|safe }};
 
         var limitTrendOption = {
             tooltip: {

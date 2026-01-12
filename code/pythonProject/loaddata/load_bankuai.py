@@ -1,8 +1,8 @@
-import chinadata.ca_data as ts
+import tudata as ts
 import pymysql
 
 # 设置 Tushare Pro 的 token
-ts.set_token('i593c24d0926bfb845f136082a335d64f71')
+ts.set_token('a1dec7f45807440eb48f8f28ccee3ead')
 pro = ts.pro_api()
 
 # 数据库连接配置
@@ -67,10 +67,10 @@ def insert_into_database(sectors, table_name):
 
 
 if __name__ == "__main__":
-    # 获取行业板块数据
-    industry_sectors = get_industry_sectors()
-    if industry_sectors is not None:
-        insert_into_database(industry_sectors, 'industry_sector')
+    # # 获取行业板块数据
+    # industry_sectors = get_industry_sectors()
+    # if industry_sectors is not None:
+    #     insert_into_database(industry_sectors, 'industry_sector')
 
     # 获取概念板块数据
     concept_sectors = get_concept_sectors()
